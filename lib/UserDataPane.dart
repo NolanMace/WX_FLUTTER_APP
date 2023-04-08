@@ -61,7 +61,7 @@ class _UserDataPaneState extends State<UserDataPane> {
 
       setState(() {
         _users = users;
-        _pageSize = 3;
+        _pageSize = 1;
         _searchResult = _users;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
@@ -148,15 +148,15 @@ class _UserDataPaneState extends State<UserDataPane> {
 
   void _searchUser() {
     String keyword = _searchController.text.trim();
+    _currentPage = 0;
     if (keyword.isEmpty) {
-      setState(() {
-        _searchResult = _users; // 如果搜索框为空，则显示所有用户
-      });
+      fetchData();
     } else {
       setState(() {
         _searchResult = _users.where((user) {
           return user[_dropdownValue].toString().contains(keyword);
         }).toList(); // 根据关键字和选择的属性筛选用户
+        _loadData();
       });
     }
   }

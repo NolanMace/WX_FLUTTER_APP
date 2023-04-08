@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'PaginationControl.dart';
 
 class UserDataPane extends StatefulWidget {
   UserDataPane({
@@ -246,21 +247,12 @@ class _UserDataPaneState extends State<UserDataPane> {
                   ),
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_left),
-                    onPressed: _prevPage,
-                  ),
-                  Text(
-                      '${_currentPage + 1}/${(_searchResult.length / _pageSize).ceil()}'),
-                  IconButton(
-                    icon: Icon(Icons.arrow_right),
-                    onPressed: _nextPage,
-                  ),
-                ],
-              ),
+              PaginationControl(
+                  currentPage: _currentPage,
+                  totalItems: _searchResult.length,
+                  pageSize: _pageSize,
+                  onNextPage: _nextPage,
+                  onPrevPage: _prevPage)
             ],
           );
   }

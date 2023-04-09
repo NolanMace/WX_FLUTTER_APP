@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mis/ProductData.dart';
 import 'UserDataPane.dart';
 import 'BoxDataPane.dart';
 
@@ -18,8 +19,10 @@ class _ContentPaneState extends State<ContentPane> {
   Widget build(BuildContext context) {
     if (widget.subCategory == "Subcategory 1") {
       return UserDataPane();
-    } else {
+    } else if (widget.subCategory == "Subcategory 2") {
       return BoxDataPane();
+    } else {
+      return ProductData();
     }
   }
 }

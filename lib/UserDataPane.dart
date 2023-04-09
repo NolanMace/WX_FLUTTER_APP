@@ -13,6 +13,7 @@ class UserDataPane extends StatefulWidget {
 }
 
 class _UserDataPaneState extends State<UserDataPane> {
+  final String _getUsersUrl = 'http://192.168.1.113:8080/api/GetAllUsers';
   final Dio _dio = Dio();
   late List<Map<String, dynamic>> _users;
   bool _isLoading = true;
@@ -38,7 +39,7 @@ class _UserDataPaneState extends State<UserDataPane> {
         .add(LogInterceptor(responseBody: true, requestBody: true));
 
     try {
-      Response response = await _dio.get(url);
+      Response response = await _dio.get(_getUsersUrl);
       print('Response body: ${response.data}');
       responseBody = response.data.toString();
 

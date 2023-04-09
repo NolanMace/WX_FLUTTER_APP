@@ -5,23 +5,23 @@ import 'package:flutter/material.dart';
 
 import 'PaginationControl.dart';
 
-class ProductDataPane extends StatefulWidget {
-  ProductDataPane({
+class ProductData extends StatefulWidget {
+  ProductData({
     Key? key,
   }) : super(key: key);
 
   @override
-  _ProductDataPaneState createState() => _ProductDataPaneState();
+  _ProductDataState createState() => _ProductDataState();
 }
 
-class _ProductDataPaneState extends State<ProductDataPane> {
+class _ProductDataState extends State<ProductData> {
   final Dio _dio = Dio();
-  final _getAllProductsUrl = 'http://192.168.1.113:8080/api/GetAllProductes';
-  final _deleteProductUrl = 'http://192.168.1.113:8080/api/DeleteProductes';
-  final _addProductUrl = 'http://192.168.1.113:8080/api/CreateProduct';
-  final _editProductUrl = 'http://192.168.1.113:8080/api/UpdateProduct';
-  late List<int> _selectedProductIds;
-  late List<Map<String, dynamic>> _Productes;
+  final _getAllBoxesUrl = 'http://192.168.1.113:8080/api/GetAllBoxes';
+  final _deleteBoxUrl = 'http://192.168.1.113:8080/api/DeleteBoxes';
+  final _addBoxUrl = 'http://192.168.1.113:8080/api/CreateBox';
+  final _editBoxUrl = 'http://192.168.1.113:8080/api/UpdateBox';
+  late List<int> _selectedBoxIds;
+  late List<Map<String, dynamic>> _boxes;
   bool _isLoading = true;
   late String _responseBody;
   late int _pageSize;
@@ -30,7 +30,7 @@ class _ProductDataPaneState extends State<ProductDataPane> {
   //输入框控制器
   final _searchController = TextEditingController();
   late List<Map<String, dynamic>> _searchResult;
-  late String _dropdownValue = "Product_id";
+  late String _dropdownValue = "box_id";
   //销毁控制器
   @override
   void dispose() {
@@ -42,7 +42,7 @@ class _ProductDataPaneState extends State<ProductDataPane> {
     _dio.interceptors
         .add(LogInterceptor(responseBody: true, requestBody: true));
     try {
-      Response response = await _dio.get(_getAllProductsUrl);
+      Response response = await _dio.get(_getAllBoxesUrl);
       print('Response body: ${response.data}');
       _responseBody = response.data.toString();
 
@@ -54,27 +54,27 @@ class _ProductDataPaneState extends State<ProductDataPane> {
       print('JSON response body: ${_responseBody}');
 
       List<dynamic> responseList = jsonDecode(_responseBody);
-      List<Map<String, dynamic>> Productes =
+      List<Map<String, dynamic>> boxes =
           responseList.map<Map<String, dynamic>>((item) {
         return {
-          "Product_id": item["Product_id"],
+          "box_id": item["box_id"],
           "capacity": item["capacity"] ?? "",
-          "Product_name": item["Product_name"] ?? "",
-          "Product_level": item["Product_level"] ?? "",
-          "Product_type": item["Product_type"] ?? "",
+          "box_name": item["box_name"] ?? "",
+          "box_level": item["box_level"] ?? "",
+          "box_type": item["box_type"] ?? "",
           "image_url": item["image_url"] ?? "assets/touxiang.jpg",
           "notes": item["notes"] ?? "",
-          "Product_price": item["Product_price"] ?? "",
+          "box_price": item["box_price"] ?? "",
           "created_at": item["created_at"] ?? "",
           "updated_at": item["updated_at"] ?? "",
         };
       }).toList();
 
       setState(() {
-        _selectedProductIds.clear();
-        _Productes = Productes;
+        _selectedBoxIds.clear();
+        _boxes = boxes;
         _pageSize = 20;
-        _searchResult = _Productes;
+        _searchResult = _boxes;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
             .take(_pageSize)
@@ -91,8 +91,8 @@ class _ProductDataPaneState extends State<ProductDataPane> {
 
   Future<void> _deleteData() async {
     try {
-      Response response = await _dio.delete(_deleteProductUrl, data: {
-        "Product_id": _selectedProductIds,
+      Response response = await _dio.delete(_deleteBoxUrl, data: {
+        "box_id": _selectedBoxIds,
       });
       print('Response body: ${response.data}');
       fetchData();
@@ -107,7 +107,7 @@ class _ProductDataPaneState extends State<ProductDataPane> {
   @override
   void initState() {
     super.initState();
-    _selectedProductIds = [];
+    _selectedBoxIds = [];
     fetchData();
   }
 
@@ -194,14 +194,14 @@ class _ProductDataPaneState extends State<ProductDataPane> {
     });
   }
 
-  void _searchProductes() {
+  void _searchBoxes() {
     String keyword = _searchController.text.trim();
     _currentPage = 0;
     if (keyword.isEmpty) {
       fetchData();
     } else {
       setState(() {
-        _searchResult = _Productes.where((user) {
+        _searchResult = _boxes.where((user) {
           return user[_dropdownValue].toString().contains(keyword);
         }).toList(); // 根据关键字和选择的属性筛选用户
         _loadData();
@@ -209,101 +209,95 @@ class _ProductDataPaneState extends State<ProductDataPane> {
     }
   }
 
-  void _addProduct() async {
-    Map<String, dynamic>? newProduct;
+  void _addBox() async {
+    Map<String, dynamic>? newBox;
     await showDialog(
       context: context,
       builder: (context) {
-        newProduct = {
-          'Product_id': null,
+        newBox = {
+          'box_id': null,
           'capacity': null,
-          'Product_name': null,
-          'Product_level': null,
-          'Product_type': null,
+          'box_name': null,
+          'box_level': null,
+          'box_type': null,
           'image_url': null,
           'notes': null,
-          'Product_price': null,
+          'box_price': null,
         };
         return AlertDialog(
           title: Text('添加箱子'),
-          content: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 300),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子ID',
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      newProduct?['Product_id'] = int.tryParse(value);
-                    },
-                  ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '容量',
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      newProduct?['capacity'] = int.tryParse(value);
-                    },
-                  ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子名称',
-                    ),
-                    onChanged: (value) {
-                      newProduct?['Product_name'] = value.toString();
-                    },
-                  ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子等级',
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      newProduct?['Product_level'] = value.toString();
-                    },
-                  ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子类型',
-                    ),
-                    onChanged: (value) {
-                      newProduct?['Product_type'] = value.toString();
-                    },
-                  ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '封面URL',
-                    ),
-                    onChanged: (value) {
-                      newProduct?['image_url'] = value.toString();
-                    },
-                  ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '备注',
-                    ),
-                    onChanged: (value) {
-                      newProduct?['notes'] = value.toString();
-                    },
-                  ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '价格',
-                    ),
-                    keyboardType:
-                        TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (value) {
-                      newProduct?['Product_price'] = double.tryParse(value);
-                    },
-                  ),
-                ],
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '箱子ID',
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  newBox?['box_id'] = int.tryParse(value);
+                },
               ),
-            ),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '容量',
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  newBox?['capacity'] = int.tryParse(value);
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '箱子名称',
+                ),
+                onChanged: (value) {
+                  newBox?['box_name'] = value.toString();
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '箱子等级',
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  newBox?['box_level'] = value.toString();
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '箱子类型',
+                ),
+                onChanged: (value) {
+                  newBox?['box_type'] = value.toString();
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '封面URL',
+                ),
+                onChanged: (value) {
+                  newBox?['image_url'] = value.toString();
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '备注',
+                ),
+                onChanged: (value) {
+                  newBox?['notes'] = value.toString();
+                },
+              ),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: '价格',
+                ),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                onChanged: (value) {
+                  newBox?['box_price'] = double.tryParse(value);
+                },
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -315,9 +309,8 @@ class _ProductDataPaneState extends State<ProductDataPane> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_addProductUrl, data: newProduct);
-                  print('Request body2222222: ${newProduct}');
+                  final response = await _dio.post(_addBoxUrl, data: newBox);
+                  print('Request body2222222: ${newBox}');
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -332,8 +325,8 @@ class _ProductDataPaneState extends State<ProductDataPane> {
     );
   }
 
-  void _deleteProductes() {
-    if (_selectedProductIds.isEmpty) {
+  void _deleteBoxes() {
+    if (_selectedBoxIds.isEmpty) {
       return;
     }
     showDialog(
@@ -362,111 +355,106 @@ class _ProductDataPaneState extends State<ProductDataPane> {
     );
   }
 
-  void _editProduct(Map<String, dynamic> ProductData) async {
-    Map<String, dynamic> editedProduct = Map<String, dynamic>.from(ProductData);
-    editedProduct['Product_id'] =
-        int.tryParse(editedProduct['Product_id'].toString());
-    editedProduct['capacity'] =
-        int.tryParse(editedProduct['capacity'].toString());
+  void _editBox(Map<String, dynamic> boxData) async {
+    Map<String, dynamic> editedBox = Map<String, dynamic>.from(boxData);
+    editedBox['box_id'] = int.tryParse(editedBox['box_id'].toString());
+    editedBox['capacity'] = int.tryParse(editedBox['capacity'].toString());
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text('编辑箱子信息'),
-          content: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 300),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子ID',
-                    ),
-                    keyboardType: TextInputType.number,
-                    controller: TextEditingController(
-                        text: ProductData['Product_id'].toString()),
-                    onChanged: (value) {
-                      print('Product ID onChanged: $value');
-                      editedProduct['Product_id'] = int.tryParse(value);
-                    },
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '箱子ID',
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '容量',
-                    ),
-                    keyboardType: TextInputType.number,
-                    controller: TextEditingController(
-                        text: ProductData['capacity'].toString()),
-                    onChanged: (value) {
-                      editedProduct['capacity'] = int.tryParse(value);
-                    },
+                  keyboardType: TextInputType.number,
+                  controller:
+                      TextEditingController(text: boxData['box_id'].toString()),
+                  onChanged: (value) {
+                    print('Box ID onChanged: $value');
+                    editedBox['box_id'] = int.tryParse(value);
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '容量',
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子名称',
-                    ),
-                    controller: TextEditingController(
-                        text: ProductData['Product_name']),
-                    onChanged: (value) {
-                      editedProduct['Product_name'] = value.toString();
-                    },
+                  keyboardType: TextInputType.number,
+                  controller: TextEditingController(
+                      text: boxData['capacity'].toString()),
+                  onChanged: (value) {
+                    print('Box ID onChanged: $value');
+                    editedBox['capacity'] = int.tryParse(value);
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '箱子名称',
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子等级',
-                    ),
-                    keyboardType: TextInputType.number,
-                    controller: TextEditingController(
-                        text: ProductData['Product_level'].toString()),
-                    onChanged: (value) {
-                      editedProduct['Product_level'] = value.toString();
-                    },
+                  controller: TextEditingController(text: boxData['box_name']),
+                  onChanged: (value) {
+                    print('Box ID onChanged: $value');
+                    editedBox['box_name'] = value.toString();
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '箱子等级',
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '箱子类型',
-                    ),
-                    controller: TextEditingController(
-                        text: ProductData['Product_type']),
-                    onChanged: (value) {
-                      editedProduct['Product_type'] = value.toString();
-                    },
+                  keyboardType: TextInputType.number,
+                  controller: TextEditingController(
+                      text: boxData['box_level'].toString()),
+                  onChanged: (value) {
+                    print('Box ID onChanged: $value');
+                    editedBox['box_level'] = value.toString();
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '箱子类型',
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '封面URL',
-                    ),
-                    controller:
-                        TextEditingController(text: ProductData['image_url']),
-                    onChanged: (value) {
-                      editedProduct['image_url'] = value.toString();
-                    },
+                  controller: TextEditingController(text: boxData['box_type']),
+                  onChanged: (value) {
+                    print('Box ID onChanged: $value');
+                    editedBox['box_type'] = value.toString();
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '封面URL',
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '备注',
-                    ),
-                    controller:
-                        TextEditingController(text: ProductData['notes']),
-                    onChanged: (value) {
-                      editedProduct['notes'] = value.toString();
-                    },
+                  controller: TextEditingController(text: boxData['image_url']),
+                  onChanged: (value) {
+                    print('Box ID onChanged: $value');
+                    editedBox['image_url'] = value.toString();
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '备注',
                   ),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: '价格',
-                    ),
-                    keyboardType:
-                        TextInputType.numberWithOptions(decimal: true),
-                    controller: TextEditingController(
-                        text: ProductData['Product_price']),
-                    onChanged: (value) {
-                      editedProduct['Product_price'] = double.tryParse(value);
-                    },
+                  controller: TextEditingController(text: boxData['notes']),
+                  onChanged: (value) {
+                    print('Box ID onChanged: $value');
+                    editedBox['notes'] = value.toString();
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: '价格',
                   ),
-                ],
-              ),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  controller: TextEditingController(text: boxData['box_price']),
+                  onChanged: (value) {
+                    editedBox['box_price'] = double.tryParse(value);
+                  },
+                ),
+              ],
             ),
           ),
           actions: [
@@ -479,8 +467,9 @@ class _ProductDataPaneState extends State<ProductDataPane> {
             TextButton(
               onPressed: () async {
                 try {
+                  print('Request body1111111111: ${editedBox}');
                   final response =
-                      await _dio.post(_editProductUrl, data: editedProduct);
+                      await _dio.post(_editBoxUrl, data: editedBox);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -532,13 +521,13 @@ class _ProductDataPaneState extends State<ProductDataPane> {
                       late String key;
                       switch (value) {
                         case '箱子ID':
-                          key = 'Product_id';
+                          key = 'box_id';
                           break;
                         case '箱子名称':
-                          key = 'Product_name';
+                          key = 'box_name';
                           break;
                         case '箱子类型':
-                          key = 'Product_type';
+                          key = 'box_type';
                           break;
                       }
                       return DropdownMenuItem<String>(
@@ -551,7 +540,7 @@ class _ProductDataPaneState extends State<ProductDataPane> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _searchProductes,
+                      onPressed: _searchBoxes,
                       child: const Text('查找'),
                     ),
                   ),
@@ -559,7 +548,7 @@ class _ProductDataPaneState extends State<ProductDataPane> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _deleteProductes,
+                      onPressed: _deleteBoxes,
                       child: const Text('删除'),
                     ),
                   ),
@@ -567,7 +556,7 @@ class _ProductDataPaneState extends State<ProductDataPane> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _addProduct,
+                      onPressed: _addBox,
                       child: const Text('添加'),
                     ),
                   ),
@@ -576,100 +565,69 @@ class _ProductDataPaneState extends State<ProductDataPane> {
               const SizedBox(height: 10),
               Divider(),
               const SizedBox(height: 10),
-              Expanded(
-                child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: Column(
-                      children: [
-                        SizedBox(
-                            width: double.infinity,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: DataTable(
-                                columns: _columns,
-                                rows: List<DataRow>.generate(
-                                  _currentPageData.length,
-                                  (int index) => DataRow(
-                                    cells: <DataCell>[
-                                      DataCell(
-                                        Checkbox(
-                                          value: _selectedProductIds.contains(
-                                              int.parse(_currentPageData[index]
-                                                  ['Product_id'])),
-                                          onChanged: (bool? value) {
-                                            setState(() {
-                                              if (value != null && value) {
-                                                _selectedProductIds.add(
-                                                    int.parse(
-                                                        _currentPageData[index]
-                                                            ['Product_id']));
-                                              } else {
-                                                _selectedProductIds.remove(
-                                                    int.parse(
-                                                        _currentPageData[index]
-                                                            ['Product_id']));
-                                              }
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                      DataCell(Text(_currentPageData[index]
-                                          ['Product_id'])),
-                                      DataCell(Text(
-                                          _currentPageData[index]['capacity'])),
-                                      DataCell(Text(_currentPageData[index]
-                                              ['Product_name']
-                                          .toString())),
-                                      DataCell(Text(_currentPageData[index]
-                                              ['Product_level']
-                                          .toString())),
-                                      DataCell(Text(_currentPageData[index]
-                                              ['Product_type']
-                                          .toString())),
-                                      const DataCell(Image(
-                                        image: AssetImage(
-                                            'assets/wuxianshang.jpg'),
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                      )),
-                                      DataCell(Text(_currentPageData[index]
-                                              ['Product_price']
-                                          .toString())),
-                                      DataCell(
-                                        SizedBox(
-                                          width: 100,
-                                          child: SingleChildScrollView(
-                                            scrollDirection: Axis.vertical,
-                                            child: Text(
-                                              _currentPageData[index]['notes']
-                                                  .toString(),
-                                              softWrap: true,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        ElevatedButton(
-                                          onPressed: () => _editProduct(
-                                              _currentPageData[index]),
-                                          child: Text('Edit'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            )),
-                        PaginationControl(
-                            currentPage: _currentPage,
-                            totalItems: _searchResult.length,
-                            pageSize: _pageSize,
-                            onNextPage: _nextPage,
-                            onPrevPage: _prevPage)
+              SizedBox(
+                width: double.infinity,
+                child: DataTable(
+                  columns: _columns,
+                  rows: List<DataRow>.generate(
+                    _currentPageData.length,
+                    (int index) => DataRow(
+                      cells: <DataCell>[
+                        DataCell(
+                          Checkbox(
+                            value: _selectedBoxIds.contains(
+                                int.parse(_currentPageData[index]['box_id'])),
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value != null && value) {
+                                  print(value);
+                                  _selectedBoxIds.add(int.parse(
+                                      _currentPageData[index]['box_id']));
+                                  print(_selectedBoxIds);
+                                } else {
+                                  print(value);
+                                  _selectedBoxIds.remove(int.parse(
+                                      _currentPageData[index]['box_id']));
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                        DataCell(Text(_currentPageData[index]['box_id'])),
+                        DataCell(Text(_currentPageData[index]['capacity'])),
+                        DataCell(Text(
+                            _currentPageData[index]['box_name'].toString())),
+                        DataCell(Text(
+                            _currentPageData[index]['box_level'].toString())),
+                        DataCell(Text(
+                            _currentPageData[index]['box_type'].toString())),
+                        const DataCell(Image(
+                          image: AssetImage('assets/wuxianshang.jpg'),
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        )),
+                        DataCell(Text(
+                            _currentPageData[index]['box_price'].toString())),
+                        DataCell(
+                            Text(_currentPageData[index]['notes'].toString())),
+                        DataCell(
+                          ElevatedButton(
+                            onPressed: () => _editBox(_currentPageData[index]),
+                            child: Text('Edit'),
+                          ),
+                        ),
                       ],
-                    )),
+                    ),
+                  ),
+                ),
               ),
+              PaginationControl(
+                  currentPage: _currentPage,
+                  totalItems: _searchResult.length,
+                  pageSize: _pageSize,
+                  onNextPage: _nextPage,
+                  onPrevPage: _prevPage)
             ],
           );
   }

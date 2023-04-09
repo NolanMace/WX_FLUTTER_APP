@@ -13,6 +13,7 @@ class UserDataPane extends StatefulWidget {
 }
 
 class _UserDataPaneState extends State<UserDataPane> {
+  final Dio _dio = Dio();
   late List<Map<String, dynamic>> _users;
   bool _isLoading = true;
   late String responseBody;
@@ -31,12 +32,13 @@ class _UserDataPaneState extends State<UserDataPane> {
   }
 
   Future<void> fetchData() async {
-    var url = 'http://192.168.59.126:8080/api/GetAllUsers';
-    Dio dio = Dio();
-    dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+    var url = 'http://192.168.1.113:8080/api/GetAllUsers';
+
+    _dio.interceptors
+        .add(LogInterceptor(responseBody: true, requestBody: true));
 
     try {
-      Response response = await dio.get(url);
+      Response response = await _dio.get(url);
       print('Response body: ${response.data}');
       responseBody = response.data.toString();
 

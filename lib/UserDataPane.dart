@@ -13,7 +13,7 @@ class UserDataPane extends StatefulWidget {
 }
 
 class _UserDataPaneState extends State<UserDataPane> {
-  final String _getUsersUrl = 'http://192.168.1.113:8080/api/GetAllUsers';
+  final String _getUsersUrl = 'http://localhost:8080/api/GetAllUsers';
   final Dio _dio = Dio();
   late List<Map<String, dynamic>> _users;
   bool _isLoading = true;
@@ -33,8 +33,6 @@ class _UserDataPaneState extends State<UserDataPane> {
   }
 
   Future<void> fetchData() async {
-    var url = 'http://192.168.1.113:8080/api/GetAllUsers';
-
     _dio.interceptors
         .add(LogInterceptor(responseBody: true, requestBody: true));
 
@@ -59,8 +57,14 @@ class _UserDataPaneState extends State<UserDataPane> {
           "openid": item["openid"] ?? "",
           "avatarUrl": item["avatar_url"] ?? "assets/touxiang.jpg",
           "nickname": item["nickname"] ?? "",
-          "created_at": item["created_at"] ?? "",
-          "updated_at": item["updated_at"] ?? "",
+          "created_at": item["created_at"]
+                  .replaceAll("T", " ")
+                  .replaceAll("+08:00", " ") ??
+              "",
+          "updated_at": item["updated_at"]
+                  .replaceAll("T", " ")
+                  .replaceAll("+08:00", " ") ??
+              "",
         };
       }).toList();
 

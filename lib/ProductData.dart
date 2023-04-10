@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import 'CustomDataTable.dart';
 import 'PaginationControl.dart';
 
 class ProductData extends StatefulWidget {
@@ -16,21 +17,61 @@ class ProductData extends StatefulWidget {
 
 class _ProductDataState extends State<ProductData> {
   final Dio _dio = Dio();
-  final _getAllBoxesUrl = 'http://192.168.1.113:8080/api/GetAllBoxes';
-  final _deleteBoxUrl = 'http://192.168.1.113:8080/api/DeleteBoxes';
-  final _addBoxUrl = 'http://192.168.1.113:8080/api/CreateBox';
-  final _editBoxUrl = 'http://192.168.1.113:8080/api/UpdateBox';
-  late List<int> _selectedBoxIds;
+  //网络请求相关参数
+  final _getAllBoxesUrl = 'http://localhost:8080/api/GetAllBoxes';
+  final _deleteBoxUrl = 'http://localhost:8080/api/DeleteBoxes';
+  final _addBoxUrl = 'http://localhost:8080/api/CreateBox';
+  final _editBoxUrl = 'http://localhost:8080/api/UpdateBox';
   late List<Map<String, dynamic>> _boxes;
-  bool _isLoading = true;
   late String _responseBody;
+
+//表格相关参数
+  final List<String> columnTitles = [
+    '选择',
+    "箱子ID",
+    "容量",
+    "箱子名称",
+    "箱子等级",
+    "箱子类型",
+    "封面URL",
+    "价格",
+    '备注',
+    '编辑',
+    '创建时间',
+    '更新时间',
+  ];
+  final List<String> _attributes = [
+    'select',
+    'box_id',
+    'capacity',
+    'box_name',
+    'box_level',
+    'box_type',
+    'image_url',
+    'notes',
+    'box_price',
+    'edit',
+    'created_at',
+    'updated_at'
+  ];
+  final int _imageColumnIndex = 6;
+  late List<DataColumn> _columns;
+  late List<int> _selectedBoxIds;
+  late List<dynamic> _currentPageData;
+
+  //分页相关参数
   late int _pageSize;
   late int _currentPage = 0;
-  late List<dynamic> _currentPageData;
+  late List<Map<String, dynamic>> _searchResult;
+
+  //判断是否正在加载数据
+  bool _isLoading = true;
+
   //输入框控制器
   final _searchController = TextEditingController();
-  late List<Map<String, dynamic>> _searchResult;
-  late String _dropdownValue = "box_id";
+
+  late String _dropdownValue = "box_id"; //下拉选择默认值
+
   //销毁控制器
   @override
   void dispose() {
@@ -38,6 +79,23 @@ class _ProductDataState extends State<ProductData> {
     super.dispose();
   }
 
+  //初始化
+  @override
+  void initState() {
+    super.initState();
+    _columns = columnTitles.map<DataColumn>((text) {
+      return DataColumn(
+        label: Text(
+          text,
+          style: TextStyle(fontStyle: FontStyle.italic),
+        ),
+      );
+    }).toList();
+    _selectedBoxIds = [];
+    fetchData();
+  }
+
+  //获取数据
   Future<void> fetchData() async {
     _dio.interceptors
         .add(LogInterceptor(responseBody: true, requestBody: true));
@@ -65,8 +123,14 @@ class _ProductDataState extends State<ProductData> {
           "image_url": item["image_url"] ?? "assets/touxiang.jpg",
           "notes": item["notes"] ?? "",
           "box_price": item["box_price"] ?? "",
-          "created_at": item["created_at"] ?? "",
-          "updated_at": item["updated_at"] ?? "",
+          "created_at": item["created_at"]
+                  .replaceAll("T", " ")
+                  .replaceAll("+08:00", " ") ??
+              "",
+          "updated_at": item["updated_at"]
+                  .replaceAll("T", " ")
+                  .replaceAll("+08:00", " ") ??
+              "",
         };
       }).toList();
 
@@ -89,87 +153,7 @@ class _ProductDataState extends State<ProductData> {
     }
   }
 
-  Future<void> _deleteData() async {
-    try {
-      Response response = await _dio.delete(_deleteBoxUrl, data: {
-        "box_id": _selectedBoxIds,
-      });
-      print('Response body: ${response.data}');
-      fetchData();
-    } catch (error) {
-      print('Error: $error');
-      setState(() {
-        _isLoading = true;
-      });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedBoxIds = [];
-    fetchData();
-  }
-
-  final List<DataColumn> _columns = [
-    const DataColumn(
-      label: Text(
-        '选择',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '箱子ID',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '容量',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '箱子名称',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '箱子等级',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '箱子类型',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '封面URL',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '价格',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '备注',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-        label: Text('编辑', style: TextStyle(fontStyle: FontStyle.italic)))
-  ];
-
+  //分页相关函数
   void _loadData() {
     int startIndex = _currentPage * _pageSize;
     //向后端请求数据
@@ -194,6 +178,7 @@ class _ProductDataState extends State<ProductData> {
     });
   }
 
+  //增删查改相关函数
   void _searchBoxes() {
     String keyword = _searchController.text.trim();
     _currentPage = 0;
@@ -226,79 +211,84 @@ class _ProductDataState extends State<ProductData> {
         };
         return AlertDialog(
           title: Text('添加箱子'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '箱子ID',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  newBox?['box_id'] = int.tryParse(value);
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '容量',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  newBox?['capacity'] = int.tryParse(value);
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '箱子名称',
-                ),
-                onChanged: (value) {
-                  newBox?['box_name'] = value.toString();
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '箱子等级',
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  newBox?['box_level'] = value.toString();
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '箱子类型',
-                ),
-                onChanged: (value) {
-                  newBox?['box_type'] = value.toString();
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '封面URL',
-                ),
-                onChanged: (value) {
-                  newBox?['image_url'] = value.toString();
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '备注',
-                ),
-                onChanged: (value) {
-                  newBox?['notes'] = value.toString();
-                },
-              ),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: '价格',
-                ),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                onChanged: (value) {
-                  newBox?['box_price'] = double.tryParse(value);
-                },
-              ),
-            ],
-          ),
+          content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '箱子ID',
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          newBox?['box_id'] = int.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '容量',
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          newBox?['capacity'] = int.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '箱子名称',
+                        ),
+                        onChanged: (value) {
+                          newBox?['box_name'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '箱子等级',
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          newBox?['box_level'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '箱子类型',
+                        ),
+                        onChanged: (value) {
+                          newBox?['box_type'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '封面URL',
+                        ),
+                        onChanged: (value) {
+                          newBox?['image_url'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '备注',
+                        ),
+                        onChanged: (value) {
+                          newBox?['notes'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '价格',
+                        ),
+                        keyboardType:
+                            TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (value) {
+                          newBox?['box_price'] = double.tryParse(value);
+                        },
+                      ),
+                    ],
+                  ))),
           actions: [
             TextButton(
               onPressed: () {
@@ -323,6 +313,21 @@ class _ProductDataState extends State<ProductData> {
         );
       },
     );
+  }
+
+  Future<void> _deleteData() async {
+    try {
+      Response response = await _dio.delete(_deleteBoxUrl, data: {
+        "box_id": _selectedBoxIds,
+      });
+      print('Response body: ${response.data}');
+      fetchData();
+    } catch (error) {
+      print('Error: $error');
+      setState(() {
+        _isLoading = true;
+      });
+    }
   }
 
   void _deleteBoxes() {
@@ -359,104 +364,114 @@ class _ProductDataState extends State<ProductData> {
     Map<String, dynamic> editedBox = Map<String, dynamic>.from(boxData);
     editedBox['box_id'] = int.tryParse(editedBox['box_id'].toString());
     editedBox['capacity'] = int.tryParse(editedBox['capacity'].toString());
+    editedBox.remove("created_at");
+    editedBox.remove("updated_at");
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text('编辑箱子信息'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '箱子ID',
-                  ),
-                  keyboardType: TextInputType.number,
-                  controller:
-                      TextEditingController(text: boxData['box_id'].toString()),
-                  onChanged: (value) {
-                    print('Box ID onChanged: $value');
-                    editedBox['box_id'] = int.tryParse(value);
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '容量',
-                  ),
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(
-                      text: boxData['capacity'].toString()),
-                  onChanged: (value) {
-                    print('Box ID onChanged: $value');
-                    editedBox['capacity'] = int.tryParse(value);
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '箱子名称',
-                  ),
-                  controller: TextEditingController(text: boxData['box_name']),
-                  onChanged: (value) {
-                    print('Box ID onChanged: $value');
-                    editedBox['box_name'] = value.toString();
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '箱子等级',
-                  ),
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(
-                      text: boxData['box_level'].toString()),
-                  onChanged: (value) {
-                    print('Box ID onChanged: $value');
-                    editedBox['box_level'] = value.toString();
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '箱子类型',
-                  ),
-                  controller: TextEditingController(text: boxData['box_type']),
-                  onChanged: (value) {
-                    print('Box ID onChanged: $value');
-                    editedBox['box_type'] = value.toString();
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '封面URL',
-                  ),
-                  controller: TextEditingController(text: boxData['image_url']),
-                  onChanged: (value) {
-                    print('Box ID onChanged: $value');
-                    editedBox['image_url'] = value.toString();
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '备注',
-                  ),
-                  controller: TextEditingController(text: boxData['notes']),
-                  onChanged: (value) {
-                    print('Box ID onChanged: $value');
-                    editedBox['notes'] = value.toString();
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: '价格',
-                  ),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  controller: TextEditingController(text: boxData['box_price']),
-                  onChanged: (value) {
-                    editedBox['box_price'] = double.tryParse(value);
-                  },
-                ),
-              ],
-            ),
-          ),
+          content: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 600),
+              child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '箱子ID',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: boxData['box_id'].toString()),
+                        onChanged: (value) {
+                          print('Box ID onChanged: $value');
+                          editedBox['box_id'] = int.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '容量',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: boxData['capacity'].toString()),
+                        onChanged: (value) {
+                          print('Box ID onChanged: $value');
+                          editedBox['capacity'] = int.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '箱子名称',
+                        ),
+                        controller:
+                            TextEditingController(text: boxData['box_name']),
+                        onChanged: (value) {
+                          print('Box ID onChanged: $value');
+                          editedBox['box_name'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '箱子等级',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: boxData['box_level'].toString()),
+                        onChanged: (value) {
+                          print('Box ID onChanged: $value');
+                          editedBox['box_level'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '箱子类型',
+                        ),
+                        controller:
+                            TextEditingController(text: boxData['box_type']),
+                        onChanged: (value) {
+                          print('Box ID onChanged: $value');
+                          editedBox['box_type'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '封面URL',
+                        ),
+                        controller:
+                            TextEditingController(text: boxData['image_url']),
+                        onChanged: (value) {
+                          print('Box ID onChanged: $value');
+                          editedBox['image_url'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '备注',
+                        ),
+                        controller:
+                            TextEditingController(text: boxData['notes']),
+                        onChanged: (value) {
+                          print('Box ID onChanged: $value');
+                          editedBox['notes'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '价格',
+                        ),
+                        keyboardType:
+                            TextInputType.numberWithOptions(decimal: true),
+                        controller:
+                            TextEditingController(text: boxData['box_price']),
+                        onChanged: (value) {
+                          editedBox['box_price'] = double.tryParse(value);
+                        },
+                      ),
+                    ],
+                  ))),
           actions: [
             TextButton(
               onPressed: () {
@@ -565,69 +580,32 @@ class _ProductDataState extends State<ProductData> {
               const SizedBox(height: 10),
               Divider(),
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: DataTable(
-                  columns: _columns,
-                  rows: List<DataRow>.generate(
-                    _currentPageData.length,
-                    (int index) => DataRow(
-                      cells: <DataCell>[
-                        DataCell(
-                          Checkbox(
-                            value: _selectedBoxIds.contains(
-                                int.parse(_currentPageData[index]['box_id'])),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value != null && value) {
-                                  print(value);
-                                  _selectedBoxIds.add(int.parse(
-                                      _currentPageData[index]['box_id']));
-                                  print(_selectedBoxIds);
-                                } else {
-                                  print(value);
-                                  _selectedBoxIds.remove(int.parse(
-                                      _currentPageData[index]['box_id']));
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                        DataCell(Text(_currentPageData[index]['box_id'])),
-                        DataCell(Text(_currentPageData[index]['capacity'])),
-                        DataCell(Text(
-                            _currentPageData[index]['box_name'].toString())),
-                        DataCell(Text(
-                            _currentPageData[index]['box_level'].toString())),
-                        DataCell(Text(
-                            _currentPageData[index]['box_type'].toString())),
-                        const DataCell(Image(
-                          image: AssetImage('assets/wuxianshang.jpg'),
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.cover,
-                        )),
-                        DataCell(Text(
-                            _currentPageData[index]['box_price'].toString())),
-                        DataCell(
-                            Text(_currentPageData[index]['notes'].toString())),
-                        DataCell(
-                          ElevatedButton(
-                            onPressed: () => _editBox(_currentPageData[index]),
-                            child: Text('Edit'),
-                          ),
-                        ),
-                      ],
-                    ),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Column(
+                    children: [
+                      SizedBox(
+                          width: double.infinity,
+                          child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: CustomDataTable(
+                                  columns: _attributes,
+                                  columnNames: _columns,
+                                  selectedItemIds: _selectedBoxIds,
+                                  currentPageData: _currentPageData,
+                                  imageColumnIndex: _imageColumnIndex,
+                                  editData: _editBox))),
+                      PaginationControl(
+                          currentPage: _currentPage,
+                          totalItems: _searchResult.length,
+                          pageSize: _pageSize,
+                          onNextPage: _nextPage,
+                          onPrevPage: _prevPage)
+                    ],
                   ),
                 ),
               ),
-              PaginationControl(
-                  currentPage: _currentPage,
-                  totalItems: _searchResult.length,
-                  pageSize: _pageSize,
-                  onNextPage: _nextPage,
-                  onPrevPage: _prevPage)
             ],
           );
   }

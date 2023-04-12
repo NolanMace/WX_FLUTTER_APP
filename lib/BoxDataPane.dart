@@ -1,14 +1,16 @@
 import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'CustomDataTable.dart'; // 用于显示表格
 import 'PaginationControl.dart';
 
 class BoxDataPane extends StatefulWidget {
-  BoxDataPane({
+  const BoxDataPane({
     Key? key,
+    this.toDetail,
   }) : super(key: key);
+
+  final Function(String)? toDetail;
 
   @override
   _BoxDataPaneState createState() => _BoxDataPaneState();
@@ -17,10 +19,10 @@ class BoxDataPane extends StatefulWidget {
 class _BoxDataPaneState extends State<BoxDataPane> {
   final Dio _dio = Dio();
   //网络请求相关参数
-  final _getAllBoxesUrl = 'http://localhost:8080/api/GetAllBoxes';
-  final _deleteBoxUrl = 'http://localhost:8080/api/DeleteBoxes';
-  final _addBoxUrl = 'http://localhost:8080/api/CreateBox';
-  final _editBoxUrl = 'http://localhost:8080/api/UpdateBox';
+  final _getAllBoxesUrl = 'http://192.168.1.113:8080/api/GetAllBoxes';
+  final _deleteBoxUrl = 'http://192.168.1.113:8080/api/DeleteBoxes';
+  final _addBoxUrl = 'http://192.168.1.113:8080/api/CreateBox';
+  final _editBoxUrl = 'http://192.168.1.113:8080/api/UpdateBox';
   late List<Map<String, dynamic>> _boxes;
   late String _responseBody;
 
@@ -35,12 +37,13 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     "封面URL",
     "备注",
     '价格',
+    '配置详情',
     '编辑',
     '创建时间',
     '更新时间',
   ];
   final List<String> _attributes = [
-    'select',
+    'select', //一些属性用于填充，保持列一致，实际对象并无此属性
     'box_id',
     'capacity',
     'box_name',
@@ -49,6 +52,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     'image_url',
     'notes',
     'box_price',
+    'config',
     'edit',
     'created_at',
     'updated_at'
@@ -211,7 +215,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
         return AlertDialog(
           title: Text('添加箱子'),
           content: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 600),
+              constraints: BoxConstraints(maxWidth: 300),
               child: SingleChildScrollView(
                   scrollDirection: Axis.vertical,
                   child: Column(
@@ -318,6 +322,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       Response response = await _dio.delete(_deleteBoxUrl, data: {
         "box_id": _selectedBoxIds,
       });
+      print(_selectedBoxIds);
       print('Response body: ${response.data}');
       fetchData();
     } catch (error) {
@@ -371,7 +376,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
         return AlertDialog(
           title: Text('编辑箱子信息'),
           content: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 600),
+            constraints: BoxConstraints(maxWidth: 300),
             child: SingleChildScrollView(
               scrollDirection: Axis.vertical,
               child: Column(
@@ -582,6 +587,8 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                             child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: CustomDataTable(
+                                    hasDetailButton: true,
+                                    toDetail: widget.toDetail,
                                     columns: _attributes,
                                     columnNames: _columns,
                                     selectedItemIds: _selectedBoxIds,

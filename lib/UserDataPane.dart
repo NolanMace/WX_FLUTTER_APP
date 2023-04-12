@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:mis/CustomDataTable.dart';
 import 'PaginationControl.dart';
 
 class UserDataPane extends StatefulWidget {
@@ -13,18 +15,57 @@ class UserDataPane extends StatefulWidget {
 }
 
 class _UserDataPaneState extends State<UserDataPane> {
-  final String _getUsersUrl = 'http://localhost:8080/api/GetAllUsers';
+  //数据请求地址
+  final String _getUsersUrl = 'http://192.168.1.113:8080/api/GetAllUsers';
+  final String _editUserUrl = 'http://192.168.1.113:8080/api/UpdateUser';
   final Dio _dio = Dio();
   late List<Map<String, dynamic>> _users;
-  bool _isLoading = true;
   late String responseBody;
+
+  //判断是否正在加载数据
+  bool _isLoading = true;
+
+  //分页控制
   late int _pageSize;
   late int _currentPage = 0;
+  late List<Map<String, dynamic>> _searchResult;
+
+  //表格参数
+  final List<String> columnTitles = [
+    "select",
+    "id",
+    "avatarUrl",
+    "nickname",
+    "手机号",
+    "unionid",
+    "openid",
+    "eidt",
+    "创建时间",
+    "更新时间"
+  ];
+  final List<String> _attributes = [
+    "select",
+    "user_id",
+    "avatarUrl",
+    "nickname",
+    "phone",
+    "unionid",
+    "openid",
+    "eidt",
+    "created_at",
+    "updated_at"
+  ];
+  final int _imageColumnIndex = 2;
+  late List<DataColumn> _columns;
+  late List<int> _selectedUserIds;
   late List<dynamic> _currentPageData;
+
   //输入框控制器
   final _searchController = TextEditingController();
-  late List<Map<String, dynamic>> _searchResult;
-  late String _dropdownValue = "id";
+
+  //下拉菜单默认选项
+  late String _dropdownValue = "user_id";
+
   //销毁控制器
   @override
   void dispose() {
@@ -32,6 +73,7 @@ class _UserDataPaneState extends State<UserDataPane> {
     super.dispose();
   }
 
+  //请求数据
   Future<void> fetchData() async {
     _dio.interceptors
         .add(LogInterceptor(responseBody: true, requestBody: true));
@@ -52,11 +94,12 @@ class _UserDataPaneState extends State<UserDataPane> {
       List<Map<String, dynamic>> users =
           responseList.map<Map<String, dynamic>>((item) {
         return {
-          "id": item["user_id"].toString(),
+          "user_id": item["user_id"],
           "unionid": item["unionid"] ?? "",
           "openid": item["openid"] ?? "",
           "avatarUrl": item["avatar_url"] ?? "assets/touxiang.jpg",
           "nickname": item["nickname"] ?? "",
+          "phone": item["phone"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
                   .replaceAll("+08:00", " ") ??
@@ -69,8 +112,9 @@ class _UserDataPaneState extends State<UserDataPane> {
       }).toList();
 
       setState(() {
+        _selectedUserIds.clear();
         _users = users;
-        _pageSize = 1;
+        _pageSize = 8;
         _searchResult = _users;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
@@ -86,57 +130,23 @@ class _UserDataPaneState extends State<UserDataPane> {
     }
   }
 
+  //初始化函数
   @override
   void initState() {
     super.initState();
+    _columns = columnTitles.map<DataColumn>((text) {
+      return DataColumn(
+        label: Text(
+          text,
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ),
+      );
+    }).toList();
+    _selectedUserIds = [];
     fetchData();
   }
 
-  final List<DataColumn> _columns = [
-    const DataColumn(
-      label: Text(
-        '用户ID',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '头像',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '昵称',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        'UNIONID',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        'OPENID',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '创建时间',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-    const DataColumn(
-      label: Text(
-        '更新时间',
-        style: TextStyle(fontStyle: FontStyle.italic),
-      ),
-    ),
-  ];
-
+  //分页函数
   void _loadData() {
     int startIndex = _currentPage * _pageSize;
     //向后端请求数据
@@ -161,6 +171,7 @@ class _UserDataPaneState extends State<UserDataPane> {
     });
   }
 
+  //搜索函数
   void _searchUser() {
     String keyword = _searchController.text.trim();
     _currentPage = 0;
@@ -174,6 +185,106 @@ class _UserDataPaneState extends State<UserDataPane> {
         _loadData();
       });
     }
+  }
+
+  //编辑函数
+  void _editUser(Map<String, dynamic> userData) async {
+    Map<String, dynamic> editedUser = Map<String, dynamic>.from(userData);
+    editedUser['user_id'] = int.tryParse(editedUser['user_id'].toString());
+    editedUser.remove("created_at");
+    editedUser.remove("updated_at");
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('编辑用户信息'),
+          content: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 300),
+              child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '用户ID',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: userData['user_id'].toString()),
+                        onChanged: (value) {
+                          editedUser['user_id'] = int.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '昵称',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: userData['nickname'].toString()),
+                        onChanged: (value) {
+                          editedUser['nickname'] = int.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: 'unionid',
+                        ),
+                        controller:
+                            TextEditingController(text: userData['unionid']),
+                        onChanged: (value) {
+                          editedUser['unionid'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: 'openid',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: userData['openid'].toString()),
+                        onChanged: (value) {
+                          editedUser['openid'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: InputDecoration(
+                          labelText: '手机号',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: userData['phone'].toString()),
+                        onChanged: (value) {
+                          editedUser['phone'] = value.toString();
+                        },
+                      ),
+                    ],
+                  ))),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('取消'),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  final response =
+                      await _dio.post(_editUserUrl, data: editedUser);
+                  Navigator.of(context).pop();
+                  fetchData();
+                } catch (error) {
+                  print('Error: $error');
+                }
+              },
+              child: Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -203,7 +314,7 @@ class _UserDataPaneState extends State<UserDataPane> {
                       _dropdownValue = newValue!;
                     });
                   },
-                  items: <String>['id', 'unionid', 'openid', 'nickname']
+                  items: <String>['user_id', 'unionid', 'openid', 'nickname']
                       .map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
@@ -232,41 +343,14 @@ class _UserDataPaneState extends State<UserDataPane> {
                           width: double.infinity,
                           child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
-                              child: DataTable(
-                                columns: _columns,
-                                rows: List<DataRow>.generate(
-                                  _currentPageData.length,
-                                  (int index) => DataRow(
-                                    cells: <DataCell>[
-                                      DataCell(Text(_currentPageData[index]
-                                              ["id"]
-                                          .toString())),
-                                      const DataCell(Image(
-                                        image:
-                                            AssetImage("assets/touxiang.jpg"),
-                                        width: 50,
-                                        height: 50,
-                                        fit: BoxFit.cover,
-                                      )),
-                                      DataCell(Text(_currentPageData[index]
-                                              ["nickname"]
-                                          .toString())),
-                                      DataCell(Text(_currentPageData[index]
-                                              ["unionid"]
-                                          .toString())),
-                                      DataCell(Text(_currentPageData[index]
-                                              ["openid"]
-                                          .toString())),
-                                      DataCell(Text(_currentPageData[index]
-                                              ["created_at"]
-                                          .toString())),
-                                      DataCell(Text(_currentPageData[index]
-                                              ["updated_at"]
-                                          .toString())),
-                                    ],
-                                  ),
-                                ),
-                              ))),
+                              child: CustomDataTable(
+                                  columns: _attributes,
+                                  columnNames: _columns,
+                                  selectedItemIds: _selectedUserIds,
+                                  hasDetailButton: false,
+                                  currentPageData: _currentPageData,
+                                  imageColumnIndex: _imageColumnIndex,
+                                  editData: _editUser))),
                       PaginationControl(
                           currentPage: _currentPage,
                           totalItems: _searchResult.length,

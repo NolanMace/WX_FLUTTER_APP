@@ -9,18 +9,20 @@ class CustomDataTable extends StatefulWidget {
   final Function(Map<String, dynamic> data) editData;
   final bool hasDetailButton;
   final Function(String)? toDetail;
+  final Function(bool)? selectAll;
 
-  const CustomDataTable({
-    Key? key,
-    required this.columns,
-    required this.columnNames,
-    required this.selectedItemIds,
-    required this.hasDetailButton, //详情按钮默认放在倒数第四列
-    required this.currentPageData,
-    required this.imageColumnIndex,
-    required this.editData,
-    this.toDetail,
-  }) : super(key: key);
+  const CustomDataTable(
+      {Key? key,
+      required this.columns,
+      required this.columnNames,
+      required this.selectedItemIds,
+      required this.hasDetailButton, //详情按钮默认放在倒数第四列
+      required this.currentPageData,
+      required this.imageColumnIndex,
+      required this.editData,
+      this.toDetail,
+      this.selectAll})
+      : super(key: key);
 
   @override
   _CustomDataTableState createState() => _CustomDataTableState();

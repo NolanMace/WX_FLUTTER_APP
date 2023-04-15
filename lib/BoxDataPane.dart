@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:mis/config.dart';
 import 'CustomDataTable.dart'; // 用于显示表格
 import 'PaginationControl.dart';
 
@@ -19,10 +20,10 @@ class BoxDataPane extends StatefulWidget {
 class _BoxDataPaneState extends State<BoxDataPane> {
   final Dio _dio = Dio();
   //网络请求相关参数
-  final _getAllBoxesUrl = 'http://192.168.1.113:8080/api/GetAllBoxes';
-  final _deleteBoxUrl = 'http://192.168.1.113:8080/api/DeleteBoxes';
-  final _addBoxUrl = 'http://192.168.1.113:8080/api/CreateBox';
-  final _editBoxUrl = 'http://192.168.1.113:8080/api/UpdateBox';
+  final _getAllBoxesUrl = AppConfig.getAllBoxesUrl;
+  final _deleteBoxUrl = AppConfig.deleteBoxUrl;
+  final _addBoxUrl = AppConfig.addBoxUrl;
+  final _editBoxUrl = AppConfig.updateBoxUrl;
   late List<Map<String, dynamic>> _boxes;
   late String _responseBody;
 
@@ -79,6 +80,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
   @override
   void dispose() {
     _searchController.dispose();
+    _dio.close();
     super.dispose();
   }
 
@@ -499,7 +501,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
   @override
   Widget build(BuildContext context) {
     return _isLoading
-        ? Center(child: CircularProgressIndicator())
+        ? const Center(child: CircularProgressIndicator())
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

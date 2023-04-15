@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:mis/CustomDataTable.dart';
+import 'package:mis/config.dart';
 import 'PaginationControl.dart';
 
 class UserDataPane extends StatefulWidget {
@@ -16,8 +17,8 @@ class UserDataPane extends StatefulWidget {
 
 class _UserDataPaneState extends State<UserDataPane> {
   //数据请求地址
-  final String _getUsersUrl = 'http://192.168.1.113:8080/api/GetAllUsers';
-  final String _editUserUrl = 'http://192.168.1.113:8080/api/UpdateUser';
+  final String _getUsersUrl = AppConfig.getAllUsersUrl;
+  final String _editUserUrl = AppConfig.editUserUrl;
   final Dio _dio = Dio();
   late List<Map<String, dynamic>> _users;
   late String responseBody;
@@ -26,16 +27,18 @@ class _UserDataPaneState extends State<UserDataPane> {
   bool _isLoading = true;
 
   //分页控制
-  late int _pageSize;
+  final int _pageSize = 15;
   late int _currentPage = 0;
+  late List<Map<String, dynamic>> _appIdResult;
   late List<Map<String, dynamic>> _searchResult;
 
   //表格参数
   final List<String> columnTitles = [
-    "select",
+    "选择",
     "id",
     "avatarUrl",
     "nickname",
+    "app_id",
     "手机号",
     "unionid",
     "openid",
@@ -48,6 +51,7 @@ class _UserDataPaneState extends State<UserDataPane> {
     "user_id",
     "avatarUrl",
     "nickname",
+    "app_id",
     "phone",
     "unionid",
     "openid",
@@ -62,6 +66,7 @@ class _UserDataPaneState extends State<UserDataPane> {
 
   //输入框控制器
   final _searchController = TextEditingController();
+  final _appIdController = TextEditingController();
 
   //下拉菜单默认选项
   late String _dropdownValue = "user_id";
@@ -70,6 +75,8 @@ class _UserDataPaneState extends State<UserDataPane> {
   @override
   void dispose() {
     _searchController.dispose();
+    _appIdController.dispose();
+    _dio.close();
     super.dispose();
   }
 
@@ -95,6 +102,7 @@ class _UserDataPaneState extends State<UserDataPane> {
           responseList.map<Map<String, dynamic>>((item) {
         return {
           "user_id": item["user_id"],
+          "app_id": item["app_id"] ?? "",
           "unionid": item["unionid"] ?? "",
           "openid": item["openid"] ?? "",
           "avatarUrl": item["avatar_url"] ?? "assets/touxiang.jpg",
@@ -114,7 +122,6 @@ class _UserDataPaneState extends State<UserDataPane> {
       setState(() {
         _selectedUserIds.clear();
         _users = users;
-        _pageSize = 8;
         _searchResult = _users;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
@@ -171,6 +178,23 @@ class _UserDataPaneState extends State<UserDataPane> {
     });
   }
 
+  //选择APPID
+  void _selectAppId() {
+    String keyword = _appIdController.text.trim();
+    _currentPage = 0;
+    if (keyword.isEmpty) {
+      fetchData();
+    } else {
+      setState(() {
+        _appIdResult = _users.where((element) {
+          return element["app_id"] == _appIdController.text.trim();
+        }).toList();
+        _searchResult = _appIdResult;
+        _loadData();
+      });
+    }
+  }
+
   //搜索函数
   void _searchUser() {
     String keyword = _searchController.text.trim();
@@ -179,8 +203,8 @@ class _UserDataPaneState extends State<UserDataPane> {
       fetchData();
     } else {
       setState(() {
-        _searchResult = _users.where((user) {
-          return user[_dropdownValue].toString().contains(keyword);
+        _searchResult = _appIdResult.where((user) {
+          return user[_dropdownValue].toString() == keyword;
         }).toList(); // 根据关键字和选择的属性筛选用户
         _loadData();
       });
@@ -197,16 +221,16 @@ class _UserDataPaneState extends State<UserDataPane> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('编辑用户信息'),
+          title: const Text('编辑用户信息'),
           content: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 300),
+              constraints: const BoxConstraints(maxWidth: 300),
               child: SingleChildScrollView(
                   scrollDirection: Axis.vertical,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '用户ID',
                         ),
                         keyboardType: TextInputType.number,
@@ -217,7 +241,18 @@ class _UserDataPaneState extends State<UserDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
+                          labelText: 'app_id',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: userData['app_id'].toString()),
+                        onChanged: (value) {
+                          editedUser['app_id'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
                           labelText: '昵称',
                         ),
                         keyboardType: TextInputType.number,
@@ -228,7 +263,7 @@ class _UserDataPaneState extends State<UserDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'unionid',
                         ),
                         controller:
@@ -238,7 +273,7 @@ class _UserDataPaneState extends State<UserDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'openid',
                         ),
                         keyboardType: TextInputType.number,
@@ -249,7 +284,7 @@ class _UserDataPaneState extends State<UserDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '手机号',
                         ),
                         keyboardType: TextInputType.number,
@@ -266,7 +301,7 @@ class _UserDataPaneState extends State<UserDataPane> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('取消'),
+              child: const Text('取消'),
             ),
             TextButton(
               onPressed: () async {
@@ -279,7 +314,7 @@ class _UserDataPaneState extends State<UserDataPane> {
                   print('Error: $error');
                 }
               },
-              child: Text('保存'),
+              child: const Text('保存'),
             ),
           ],
         );
@@ -290,7 +325,7 @@ class _UserDataPaneState extends State<UserDataPane> {
   @override
   Widget build(BuildContext context) {
     return _isLoading
-        ? Center(child: CircularProgressIndicator())
+        ? const Center(child: CircularProgressIndicator())
         : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const SizedBox(height: 20),
             Row(
@@ -330,10 +365,29 @@ class _UserDataPaneState extends State<UserDataPane> {
                     child: const Text('查找'),
                   ),
                 ),
+                const SizedBox(width: 20),
+                SizedBox(
+                  width: 200,
+                  child: TextField(
+                    controller: _appIdController,
+                    decoration: const InputDecoration(
+                      hintText: '输入APPID',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 80,
+                  child: ElevatedButton(
+                    onPressed: _selectAppId,
+                    child: const Text('选择APPID'),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
-            Divider(),
+            const Divider(),
             const SizedBox(height: 10),
             Expanded(
                 child: SingleChildScrollView(

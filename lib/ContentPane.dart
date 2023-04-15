@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mis/BoxItemConfigPane.dart';
+import 'BoxItemConfigPane.dart';
 import 'package:mis/ProductData.dart';
 import 'UserDataPane.dart';
 import 'BoxDataPane.dart';
-import 'BoxItemConfigPane.dart';
+import 'product_instance_pane.dart';
 
 class ContentPane extends StatefulWidget {
   final String subCategory;
@@ -26,9 +26,17 @@ class _ContentPaneState extends State<ContentPane>
   String _boxId = '';
 
   void _toDetail(String id) {
+    print(id);
     setState(() {
       _boxId = id;
       _tabController.index = 1;
+    });
+  }
+
+  void _toInstance(String id) {
+    setState(() {
+      _boxId = id;
+      _tabController.index = 2;
     });
   }
 
@@ -36,7 +44,7 @@ class _ContentPaneState extends State<ContentPane>
   void initState() {
     // 在 initState 中进行初始化
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -63,6 +71,9 @@ class _ContentPaneState extends State<ContentPane>
               Tab(
                 text: "箱子配置",
               ),
+              Tab(
+                text: "箱子实例",
+              ),
             ],
             onTap: (index) {
               setState(() {
@@ -78,7 +89,8 @@ class _ContentPaneState extends State<ContentPane>
                 BoxDataPane(
                   toDetail: _toDetail,
                 ),
-                BoxItemConfigPane(id: _boxId)
+                BoxItemConfigPane(id: _boxId, toInstance: _toInstance),
+                ProductInstancePane(id: _boxId)
               ],
             ),
           ),

@@ -5,48 +5,49 @@ import 'package:flutter/material.dart';
 import 'CustomDataTable.dart';
 import 'PaginationControl.dart';
 
-class BoxItemConfigPane extends StatefulWidget {
+class ProductInstancePane extends StatefulWidget {
   final String id;
-  final Function(String)? toInstance;
-  const BoxItemConfigPane({Key? key, required this.id, this.toInstance})
-      : super(key: key);
+  const ProductInstancePane({Key? key, required this.id}) : super(key: key);
 
-  _BoxItemConfigPaneState createState() => _BoxItemConfigPaneState();
+  _ProductInstancePaneState createState() => _ProductInstancePaneState();
 }
 
-class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
+class _ProductInstancePaneState extends State<ProductInstancePane> {
   final Dio _dio = Dio();
   //请求参数
-  final String _getAllBoxItemConfigByBoxIdUrl = AppConfig.getConfigUrl;
-  final String _addConfigUrl = AppConfig.addConfigUrl;
-  final String _deleteConfigUrl = AppConfig.deleteConfigUrl;
-  final String _updateConfigUrl = AppConfig.updateConfigUrl;
-  final String _generateBoxItemsUrl = AppConfig.generateBoxItemsUrl;
-  late List<Map<String, dynamic>> _boxItemConfigData;
+  final String _getBoxItemsByBoxId = AppConfig.getBoxItemsByBoxIdUrl;
+  final String _deleteBoxItemsUrl = AppConfig.deleteBoxItemsUrl;
+  final String _updateBoxItemUrl = AppConfig.updateBoxItemUrl;
+  late List<Map<String, dynamic>> _productInstanceData;
+  late List<Map<String, dynamic>> _appIdResult;
 
   //表格参数
   final List<String> _columns = [
     'select',
-    'auto_id',
-    'box_template_config_id',
+    'box_item_id',
+    'app_id',
     'box_id',
     'product_id',
-    'img_url',
-    'quantity',
+    'box_number',
     'product_level',
+    'img_url',
+    'is_drawn',
+    'notes',
     'edit',
     'created_at',
     'updated_at',
   ];
   final _columnsTitle = [
-    '选择',
-    'ID',
-    '箱子配置ID',
+    '全选',
+    '实例ID',
+    '应用ID',
     '箱子ID',
     '商品ID',
-    '图片',
-    '数量',
+    '箱子编号',
     '商品等级',
+    '图片',
+    '是否已抽取',
+    '备注',
     '编辑',
     '创建时间',
     '更新时间',
@@ -54,21 +55,23 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   List<DataColumn> _columnNames = [];
   List<int> _selectedItemIds = [];
   List<dynamic> _currentPageData = [];
-  final int _imageColumnIndex = 5;
+  final int _imageColumnIndex = 7;
   final bool _hasDetailButton = false;
 
   //分页参数
-  late int _pageSize = 3;
+  late int _pageSize = 10;
   late int _currentPage = 0;
   late List<Map<String, dynamic>> _searchResult = [];
 
   //下拉默认
-  String _dropdownValue = 'product_level';
+  String _dropdownValue = 'box_number';
 
   //输入框控制器
   final _searchController = TextEditingController();
+  final _appIdController = TextEditingController();
 
   bool _isLoading = true;
+  bool _isAllSelected = false;
 
   //请求数据
   Future<void> fetchData() async {
@@ -79,10 +82,9 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
         'box_id': int.parse(widget.id),
       };
       Response response = await _dio.get(
-        _getAllBoxItemConfigByBoxIdUrl,
+        _getBoxItemsByBoxId,
         queryParameters: queryParams,
       );
-      print('Response body: ${response.data}');
       String _responseBody = response.data.toString();
 
       // 将数据格式转换为JSON格式
@@ -90,17 +92,19 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
           RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
-      print('JSON response body: ${_responseBody}');
 
       List<dynamic> responseList = jsonDecode(_responseBody);
-      _boxItemConfigData = responseList.map<Map<String, dynamic>>((item) {
+      List<Map<String, dynamic>> productInstanceData =
+          responseList.map<Map<String, dynamic>>((item) {
         return {
-          "auto_id": item["auto_id"] ?? "",
-          "box_template_config_id": item["box_template_config_id"] ?? "",
+          "box_item_id": item["box_item_id"] ?? "",
+          "app_id": item["app_id"] ?? "",
           "box_id": item["box_id"] ?? "",
           "product_id": item["product_id"] ?? "",
-          "quantity": item["quantity"] ?? "",
+          "box_number": item["box_number"] ?? "",
           "product_level": item["product_level"] ?? "",
+          "is_drawn": item["is_drawn"] ?? "",
+          "notes": item["notes"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
                   .replaceAll("+08:00", " ") ??
@@ -114,7 +118,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
 
       setState(() {
         _selectedItemIds.clear();
-        _searchResult = _boxItemConfigData;
+        _productInstanceData = productInstanceData;
+        _searchResult = _productInstanceData;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
             .take(_pageSize)
@@ -154,6 +159,41 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     });
   }
 
+  //选择APPID
+  void _selectAppId() {
+    String keyword = _appIdController.text.trim();
+    _currentPage = 0;
+    if (keyword.isEmpty) {
+      fetchData();
+    } else {
+      setState(() {
+        _selectedItemIds.clear();
+        _appIdResult = _productInstanceData.where((element) {
+          return element["app_id"] == _appIdController.text.trim();
+        }).toList();
+        _searchResult = _appIdResult;
+        _loadData();
+      });
+    }
+  }
+
+  //全选方法
+  void _selectAll(bool? value) {
+    setState(() {
+      if (value == true) {
+        _selectedItemIds.clear();
+        _selectedItemIds = _searchResult.map((item) {
+          int id = int.tryParse(item["box_item_id"])!;
+          return id;
+        }).toList();
+        _isAllSelected = false;
+      } else {
+        _selectedItemIds.clear();
+        _isAllSelected = true;
+      }
+    });
+  }
+
   //增删查改相关函数
   void _searchBoxes() {
     String keyword = _searchController.text.trim();
@@ -162,7 +202,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
       fetchData();
     } else {
       setState(() {
-        _searchResult = _boxItemConfigData.where((user) {
+        _selectedItemIds.clear();
+        _searchResult = _appIdResult.where((user) {
           String value = user[_dropdownValue].toString();
           RegExp regExp = RegExp(r"\b" + keyword + r"\b");
           return regExp.hasMatch(value);
@@ -172,101 +213,10 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     }
   }
 
-  void _addConfigItem() async {
-    Map<String, dynamic>? newItem;
-    await showDialog(
-      context: context,
-      builder: (context) {
-        newItem = {
-          'box_id': int.parse(widget.id),
-          'box_template_config_id': null,
-          'product_id': null,
-          'quantity': null,
-          'product_level': null,
-        };
-        return AlertDialog(
-          title: const Text('添加箱子模板'),
-          content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 300),
-              child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: TextEditingController(text: widget.id),
-                        enabled: false,
-                        decoration: const InputDecoration(
-                          labelText: '箱子ID',
-                        ),
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '商品ID',
-                        ),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          newItem?['product_id'] = int.tryParse(value);
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '商品数量',
-                        ),
-                        onChanged: (value) {
-                          newItem?['quantity'] = int.tryParse(value);
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '商品等级',
-                        ),
-                        onChanged: (value) {
-                          newItem?['product_level'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '模板ID',
-                        ),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          newItem?['box_template_config_id'] =
-                              int.tryParse(value);
-                        },
-                      ),
-                    ],
-                  ))),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  final response =
-                      await _dio.post(_addConfigUrl, data: newItem);
-                  Navigator.of(context).pop();
-                  fetchData();
-                } catch (error) {
-                  print('Error: $error');
-                }
-              },
-              child: const Text('添加'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _deleteData() async {
     try {
-      Response response = await _dio.delete(_deleteConfigUrl, data: {
-        "auto_ids": _selectedItemIds,
+      Response response = await _dio.delete(_deleteBoxItemsUrl, data: {
+        "box_item_ids": _selectedItemIds,
       });
       print(_selectedItemIds);
       print('Response body: ${response.data}');
@@ -288,7 +238,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
       builder: (context) {
         return AlertDialog(
           title: const Text('提示'),
-          content: const Text('确定删除所选配置吗？'),
+          content: const Text('确定删除所选实例吗？'),
           actions: [
             TextButton(
               onPressed: () {
@@ -312,14 +262,16 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   void _editData(Map<String, dynamic> configItem) async {
     Map<String, dynamic> editedConfigItem =
         Map<String, dynamic>.from(configItem);
+    editedConfigItem['box_item_id'] =
+        int.tryParse(editedConfigItem['box_item_id'].toString());
     editedConfigItem['box_id'] =
         int.tryParse(editedConfigItem['box_id'].toString());
-    editedConfigItem['auto_id'] =
-        int.tryParse(editedConfigItem['auto_id'].toString());
     editedConfigItem['product_id'] =
         int.tryParse(editedConfigItem['product_id'].toString());
-    editedConfigItem['quantity'] =
-        int.tryParse(editedConfigItem['quantity'].toString());
+    editedConfigItem['box_number'] =
+        int.tryParse(editedConfigItem['box_number'].toString());
+    editedConfigItem['is_drawn'] =
+        int.tryParse(editedConfigItem['is_drawn'].toString());
     editedConfigItem.remove("created_at");
     editedConfigItem.remove("updated_at");
     await showDialog(
@@ -336,11 +288,20 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                 children: [
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: 'ID',
+                      labelText: '实例ID',
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: configItem['auto_id'].toString()),
+                        text: configItem['box_item_id'].toString()),
+                    enabled: false,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '应用ID',
+                    ),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(
+                        text: configItem['app_id'].toString()),
                     enabled: false,
                   ),
                   TextField(
@@ -364,13 +325,13 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                   ),
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '商品数量',
+                      labelText: '箱子编号',
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: configItem['quantity'].toString()),
+                        text: configItem['box_number'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['quantity'] = int.parse(value);
+                      editedConfigItem['box_number'] = int.parse(value);
                     },
                   ),
                   TextField(
@@ -381,6 +342,26 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                         text: configItem['product_level']),
                     onChanged: (value) {
                       editedConfigItem['product_level'] = value.toString();
+                    },
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '是否已抽取',
+                    ),
+                    controller: TextEditingController(
+                        text: configItem['is_drawn'].toString()),
+                    onChanged: (value) {
+                      editedConfigItem['is_drawn'] = int.parse(value);
+                    },
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '备注',
+                    ),
+                    controller: TextEditingController(
+                        text: configItem['notes'].toString()),
+                    onChanged: (value) {
+                      editedConfigItem['notes'] = value.toString();
                     },
                   ),
                 ],
@@ -397,8 +378,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_updateConfigUrl, data: editedConfigItem);
+                  final response = await _dio.post(_updateBoxItemUrl,
+                      data: editedConfigItem);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -413,91 +394,32 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     );
   }
 
-  void _addBoxInstance() async {
-    Map<String, dynamic>? newItem = {
-      'box_id': int.tryParse(widget.id),
-      'app_id': null,
-      'box_template_config_id': null,
-      'box_quantity': null,
-    };
-    await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('添加箱子实例'),
-            content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 300),
-                child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '箱子ID',
-                        ),
-                        keyboardType: TextInputType.number,
-                        controller: TextEditingController(text: widget.id),
-                        enabled: false,
-                      ),
-                      TextField(
-                          decoration: const InputDecoration(
-                            labelText: '应用ID',
-                          ),
-                          onChanged: (value) {
-                            newItem['app_id'] = value.toString();
-                          }),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '配置ID',
-                        ),
-                        onChanged: (value) {
-                          newItem['box_template_config_id'] =
-                              int.tryParse(value);
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '箱子数量',
-                        ),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          newItem['box_quantity'] = int.tryParse(value);
-                        },
-                      ),
-                    ]))),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  try {
-                    await _dio.post(_generateBoxItemsUrl, data: newItem);
-                    Navigator.of(context).pop();
-                  } catch (error) {
-                    print('Error: $error');
-                  }
-                },
-                child: const Text('确定'),
-              ),
-            ],
-          );
-        });
-  }
-
   @override
   void initState() {
     super.initState();
-    _columnNames = _columnsTitle
-        .map((e) => DataColumn(
-              label: Text(
-                e,
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-            ))
-        .toList();
+    _columnNames = _columnsTitle.map((e) {
+      if (e == '全选') {
+        return DataColumn(
+            label: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(e, style: const TextStyle(fontStyle: FontStyle.italic)),
+            SizedBox(
+                width: 40,
+                child: Checkbox(
+                    value: _isAllSelected,
+                    onChanged: (value) => _selectAll(_isAllSelected)))
+          ],
+        ));
+      } else {
+        return DataColumn(
+          label: Text(
+            e,
+            style: const TextStyle(fontStyle: FontStyle.italic),
+          ),
+        );
+      }
+    }).toList();
     fetchData();
   }
 
@@ -505,17 +427,9 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   @override
   void dispose() {
     _searchController.dispose();
+    _appIdController.dispose();
     _dio.close();
     super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant BoxItemConfigPane oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 如果新的 `id` 与旧的 `id` 不同，那么执行一些操作，例如重新获取数据
-    if (widget.id != oldWidget.id) {
-      fetchData(); // 重新获取数据
-    }
   }
 
   @override
@@ -536,7 +450,6 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                           height: 20,
                         ),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Image(
@@ -550,6 +463,25 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                                 Text('ID: ${widget.id}'),
                                 const Text('Name: 标题标题'),
                               ],
+                            ),
+                            const SizedBox(width: 20),
+                            SizedBox(
+                              width: 200,
+                              child: TextField(
+                                controller: _appIdController,
+                                decoration: const InputDecoration(
+                                  hintText: '输入APPID',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 80,
+                              child: ElevatedButton(
+                                onPressed: _selectAppId,
+                                child: const Text('选择APPID'),
+                              ),
                             ),
                             const SizedBox(
                               width: 20,
@@ -573,20 +505,20 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                                 });
                               },
                               items: <String>[
+                                '箱子编号',
                                 '商品等级',
-                                '商品ID',
-                                '模板ID'
+                                '商品ID'
                               ].map<DropdownMenuItem<String>>((String value) {
                                 late String key;
                                 switch (value) {
+                                  case '箱子编号':
+                                    key = 'box_number';
+                                    break;
                                   case '商品等级':
                                     key = 'product_level';
                                     break;
                                   case '商品ID':
                                     key = 'product_id';
-                                    break;
-                                  case '模板ID':
-                                    key = 'box_template_config_id';
                                     break;
                                 }
                                 return DropdownMenuItem<String>(
@@ -612,48 +544,20 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            SizedBox(
-                              width: 80,
-                              child: ElevatedButton(
-                                onPressed: _addConfigItem,
-                                child: const Text('添加'),
-                              ),
-                            ),
                           ],
                         ),
-                        const SizedBox(
-                          height: 20,
-                        ),
-                        Row(children: [
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 100,
-                            height: 30,
-                            child: ElevatedButton(
-                              onPressed: _addBoxInstance,
-                              child: const Text('添加箱数'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 100,
-                            height: 30,
-                            child: ElevatedButton(
-                              onPressed: () => widget.toInstance!(widget.id),
-                              child: const Text('查看实例'),
-                            ),
-                          ),
-                        ]),
                         Column(
                           children: [
                             CustomDataTable(
-                                columns: _columns,
-                                columnNames: _columnNames,
-                                selectedItemIds: _selectedItemIds,
-                                hasDetailButton: _hasDetailButton,
-                                currentPageData: _currentPageData,
-                                imageColumnIndex: _imageColumnIndex,
-                                editData: _editData),
+                              columns: _columns,
+                              columnNames: _columnNames,
+                              selectedItemIds: _selectedItemIds,
+                              hasDetailButton: _hasDetailButton,
+                              currentPageData: _currentPageData,
+                              imageColumnIndex: _imageColumnIndex,
+                              editData: _editData,
+                              selectAll: _selectAll,
+                            ),
                             PaginationControl(
                                 currentPage: _currentPage,
                                 totalItems: _searchResult.length,

@@ -20,9 +20,9 @@ class _ProductDataState extends State<ProductData> {
   final Dio _dio = Dio();
   //网络请求相关参数
   final _getAllProductsUrl = AppConfig.getAllProductsUrl;
-  final _deleteProductUrl = 'http://192.168.1.113:8080/api/DeleteProducts';
-  final _addProductUrl = 'http://192.168.1.113:8080/api/CreateProduct';
-  final _editProductUrl = 'http://192.168.1.113:8080/api/UpdateProduct';
+  final _deleteProductUrl = AppConfig.deleteProductUrl;
+  final _addProductUrl = AppConfig.addProductUrl;
+  final _editProductUrl = AppConfig.updateProductUrl;
   late List<Map<String, dynamic>> _boxes;
   late String _responseBody;
 
@@ -31,7 +31,6 @@ class _ProductDataState extends State<ProductData> {
     '选择',
     "商品ID",
     "商品名称",
-    "商品等级",
     "商品图片",
     "是否现货",
     "备注",
@@ -44,7 +43,6 @@ class _ProductDataState extends State<ProductData> {
     'select',
     'product_id',
     'product_name',
-    'product_level',
     'image_url',
     'in_stock',
     'notes',
@@ -53,7 +51,7 @@ class _ProductDataState extends State<ProductData> {
     'created_at',
     'updated_at'
   ];
-  final int _imageColumnIndex = 4;
+  final int _imageColumnIndex = 3;
   late List<DataColumn> _columns;
   late List<int> _selectedProductIds;
   late List<dynamic> _currentPageData;
@@ -75,6 +73,7 @@ class _ProductDataState extends State<ProductData> {
   @override
   void dispose() {
     _searchController.dispose();
+    _dio.close();
     super.dispose();
   }
 
@@ -116,7 +115,6 @@ class _ProductDataState extends State<ProductData> {
         return {
           "product_id": item["product_id"],
           "product_name": item["product_name"] ?? "",
-          "product_level": item["product_level"] ?? "",
           "image_url": item["image_url"] ?? "",
           "in_stock": item["in_stock"] ?? "",
           "notes": item["notes"] ?? "",
@@ -200,7 +198,6 @@ class _ProductDataState extends State<ProductData> {
         newBox = {
           'product_id': null,
           'product_name': null,
-          'product_level': null,
           'image_url': null,
           'in_stock': null,
           'notes': null,
@@ -231,14 +228,6 @@ class _ProductDataState extends State<ProductData> {
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           newBox?['product_name'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '商品等级',
-                        ),
-                        onChanged: (value) {
-                          newBox?['product_level'] = value.toString();
                         },
                       ),
                       TextField(
@@ -384,16 +373,6 @@ class _ProductDataState extends State<ProductData> {
                             text: productData['product_name'].toString()),
                         onChanged: (value) {
                           editedBox['product_name'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '商品等级',
-                        ),
-                        controller: TextEditingController(
-                            text: productData['product_level']),
-                        onChanged: (value) {
-                          editedBox['product_level'] = value.toString();
                         },
                       ),
                       TextField(

@@ -67,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('请求失败，请稍后重试')),
+          const SnackBar(content: Text('请求失败，请稍后重试')),
         );
         print(e);
       }

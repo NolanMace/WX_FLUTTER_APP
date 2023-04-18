@@ -26,7 +26,6 @@ class _ContentPaneState extends State<ContentPane>
   String _boxId = '';
 
   void _toDetail(String id) {
-    print(id);
     setState(() {
       _boxId = id;
       _tabController.index = 1;

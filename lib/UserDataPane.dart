@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:mis/CustomDataTable.dart';
 import 'package:mis/config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'PaginationControl.dart';
 
 class UserDataPane extends StatefulWidget {
@@ -82,21 +83,36 @@ class _UserDataPaneState extends State<UserDataPane> {
 
   //请求数据
   Future<void> fetchData() async {
-    _dio.interceptors
-        .add(LogInterceptor(responseBody: true, requestBody: true));
-
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onResponse: (Response response, ResponseInterceptorHandler handler) {
+          print("原始响应数据: ${response.data}");
+          return handler.next(response); // 继续处理响应数据
+        },
+        onError: (DioError e, ErrorInterceptorHandler handler) {
+          print("错误信息: ${e.message}");
+          return handler.next(e); // 继续处理错误信息
+        },
+      ),
+    );
+    final prefs = await SharedPreferences.getInstance();
+    //获取名为“token”的值，如果该键不存在，则返回默认值null
+    final token = prefs.getString('token');
+    // 处理获取的值
+    final options = Options(
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
     try {
-      Response response = await _dio.get(_getUsersUrl);
-      print('Response body: ${response.data}');
+      Response response = await _dio.get(_getUsersUrl, options: options);
       responseBody = response.data.toString();
-
       // 将数据格式转换为JSON格式
       responseBody = responseBody.replaceAllMapped(
           RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
-      print('JSON response body: ${responseBody}');
-
       List<dynamic> responseList = jsonDecode(responseBody);
       List<Map<String, dynamic>> users =
           responseList.map<Map<String, dynamic>>((item) {
@@ -306,8 +322,18 @@ class _UserDataPaneState extends State<UserDataPane> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_editUserUrl, data: editedUser);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  final response = await _dio.post(_editUserUrl,
+                      data: editedUser, options: options);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {

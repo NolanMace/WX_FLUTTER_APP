@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'ContentPane.dart';
-import 'NavigationPane.dart';
 import 'login_pane.dart';
 
 void main() {
@@ -19,6 +17,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    return LoginPage();
+    return const LoginPage();
   }
 }

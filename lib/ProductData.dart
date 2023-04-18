@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mis/config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'CustomDataTable.dart';
 import 'PaginationControl.dart';
@@ -43,7 +44,7 @@ class _ProductDataState extends State<ProductData> {
     'select',
     'product_id',
     'product_name',
-    'image_url',
+    'product_image_url',
     'in_stock',
     'notes',
     'release_date',
@@ -98,8 +99,17 @@ class _ProductDataState extends State<ProductData> {
     _dio.interceptors
         .add(LogInterceptor(responseBody: true, requestBody: true));
     try {
-      Response response = await _dio.get(_getAllProductsUrl);
-      print('Response body: ${response.data}');
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      Response response = await _dio.get(_getAllProductsUrl, options: options);
       _responseBody = response.data.toString();
 
       // 将数据格式转换为JSON格式
@@ -107,15 +117,13 @@ class _ProductDataState extends State<ProductData> {
           RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
-      print('JSON response body: ${_responseBody}');
-
       List<dynamic> responseList = jsonDecode(_responseBody);
       List<Map<String, dynamic>> boxes =
           responseList.map<Map<String, dynamic>>((item) {
         return {
           "product_id": item["product_id"],
           "product_name": item["product_name"] ?? "",
-          "image_url": item["image_url"] ?? "",
+          "product_image_url": item["product_image_url"] ?? "",
           "in_stock": item["in_stock"] ?? "",
           "notes": item["notes"] ?? "",
           "release_date": item["release_date"] ?? "",
@@ -198,7 +206,7 @@ class _ProductDataState extends State<ProductData> {
         newBox = {
           'product_id': null,
           'product_name': null,
-          'image_url': null,
+          'product_image_url': null,
           'in_stock': null,
           'notes': null,
           'release_date': null,
@@ -236,7 +244,7 @@ class _ProductDataState extends State<ProductData> {
                         ),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
-                          newBox?['image_url'] = value.toString();
+                          newBox?['product_image_url'] = value.toString();
                         },
                       ),
                       TextField(
@@ -275,8 +283,18 @@ class _ProductDataState extends State<ProductData> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_addProductUrl, data: newBox);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  await _dio.post(_addProductUrl,
+                      options: options, data: newBox);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -293,8 +311,19 @@ class _ProductDataState extends State<ProductData> {
 
   Future<void> _deleteData() async {
     try {
-      Response response = await _dio.delete(_deleteProductUrl, data: {
-        "product_id": _selectedProductIds,
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      Response response =
+          await _dio.delete(_deleteProductUrl, options: options, data: {
+        "product_ids": _selectedProductIds,
       });
       print('Response body: ${response.data}');
       fetchData();
@@ -381,9 +410,9 @@ class _ProductDataState extends State<ProductData> {
                         ),
                         keyboardType: TextInputType.number,
                         controller: TextEditingController(
-                            text: productData['image_url'].toString()),
+                            text: productData['product_image_url'].toString()),
                         onChanged: (value) {
-                          editedBox['image_url'] = value.toString();
+                          editedBox['product_image_url'] = value.toString();
                         },
                       ),
                       TextField(
@@ -428,8 +457,18 @@ class _ProductDataState extends State<ProductData> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_editProductUrl, data: editedBox);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  await _dio.post(_editProductUrl,
+                      data: editedBox, options: options);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {

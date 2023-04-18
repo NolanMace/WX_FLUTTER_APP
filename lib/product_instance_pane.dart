@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'config.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -75,25 +77,34 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
 
   //请求数据
   Future<void> fetchData() async {
-    _dio.interceptors
-        .add(LogInterceptor(responseBody: true, requestBody: true));
     try {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
       Map<String, dynamic> queryParams = {
         'box_id': int.parse(widget.id),
       };
       Response response = await _dio.get(
         _getBoxItemsByBoxId,
         queryParameters: queryParams,
+        options: options,
       );
-      String _responseBody = response.data.toString();
+      String responseBody = response.data.toString();
 
       // 将数据格式转换为JSON格式
-      _responseBody = _responseBody.replaceAllMapped(
+      responseBody = responseBody.replaceAllMapped(
           RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
 
-      List<dynamic> responseList = jsonDecode(_responseBody);
+      List<dynamic> responseList = jsonDecode(responseBody);
       List<Map<String, dynamic>> productInstanceData =
           responseList.map<Map<String, dynamic>>((item) {
         return {
@@ -215,7 +226,18 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
 
   Future<void> _deleteData() async {
     try {
-      Response response = await _dio.delete(_deleteBoxItemsUrl, data: {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      Response response =
+          await _dio.delete(_deleteBoxItemsUrl, options: options, data: {
         "box_item_ids": _selectedItemIds,
       });
       print(_selectedItemIds);
@@ -378,8 +400,18 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response = await _dio.post(_updateBoxItemUrl,
-                      data: editedConfigItem);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  await _dio.post(_updateBoxItemUrl,
+                      options: options, data: editedConfigItem);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {

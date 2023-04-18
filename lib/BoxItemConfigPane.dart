@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'config.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -72,27 +74,33 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
 
   //请求数据
   Future<void> fetchData() async {
-    _dio.interceptors
-        .add(LogInterceptor(responseBody: true, requestBody: true));
     try {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
       Map<String, dynamic> queryParams = {
         'box_id': int.parse(widget.id),
       };
       Response response = await _dio.get(
         _getAllBoxItemConfigByBoxIdUrl,
         queryParameters: queryParams,
+        options: options,
       );
-      print('Response body: ${response.data}');
-      String _responseBody = response.data.toString();
+      String responseBody = response.data.toString();
 
       // 将数据格式转换为JSON格式
-      _responseBody = _responseBody.replaceAllMapped(
+      responseBody = responseBody.replaceAllMapped(
           RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
-      print('JSON response body: ${_responseBody}');
-
-      List<dynamic> responseList = jsonDecode(_responseBody);
+      List<dynamic> responseList = jsonDecode(responseBody);
       _boxItemConfigData = responseList.map<Map<String, dynamic>>((item) {
         return {
           "auto_id": item["auto_id"] ?? "",
@@ -247,8 +255,18 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_addConfigUrl, data: newItem);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  await _dio.post(_addConfigUrl,
+                      options: options, data: newItem);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -265,11 +283,19 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
 
   Future<void> _deleteData() async {
     try {
-      Response response = await _dio.delete(_deleteConfigUrl, data: {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      await _dio.delete(_deleteConfigUrl, options: options, data: {
         "auto_ids": _selectedItemIds,
       });
-      print(_selectedItemIds);
-      print('Response body: ${response.data}');
       fetchData();
     } catch (error) {
       print('Error: $error');
@@ -312,6 +338,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   void _editData(Map<String, dynamic> configItem) async {
     Map<String, dynamic> editedConfigItem =
         Map<String, dynamic>.from(configItem);
+    editedConfigItem['box_template_config_id'] =
+        int.tryParse(editedConfigItem['box_template_config_id'].toString());
     editedConfigItem['box_id'] =
         int.tryParse(editedConfigItem['box_id'].toString());
     editedConfigItem['auto_id'] =
@@ -351,6 +379,17 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                     controller: TextEditingController(
                         text: configItem['box_id'].toString()),
                     enabled: false,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '配置ID',
+                    ),
+                    controller: TextEditingController(
+                        text: configItem['box_template_config_id'].toString()),
+                    onChanged: (value) {
+                      editedConfigItem['box_template_config_id'] =
+                          int.parse(value);
+                    },
                   ),
                   TextField(
                     decoration: const InputDecoration(
@@ -397,8 +436,19 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_updateConfigUrl, data: editedConfigItem);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  print(editedConfigItem);
+                  await _dio.post(_updateConfigUrl,
+                      options: options, data: editedConfigItem);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -474,7 +524,18 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
               TextButton(
                 onPressed: () async {
                   try {
-                    await _dio.post(_generateBoxItemsUrl, data: newItem);
+                    final prefs = await SharedPreferences.getInstance();
+                    //获取名为“token”的值，如果该键不存在，则返回默认值null
+                    final token = prefs.getString('token');
+                    // 处理获取的值
+                    final options = Options(
+                      headers: {
+                        'Authorization': 'Bearer $token',
+                        'Content-Type': 'application/json',
+                      },
+                    );
+                    await _dio.post(_generateBoxItemsUrl,
+                        options: options, data: newItem);
                     Navigator.of(context).pop();
                   } catch (error) {
                     print('Error: $error');

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mis/config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'CustomDataTable.dart'; // 用于显示表格
 import 'PaginationControl.dart';
 
@@ -92,7 +93,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       return DataColumn(
         label: Text(
           text,
-          style: TextStyle(fontStyle: FontStyle.italic),
+          style: const TextStyle(fontStyle: FontStyle.italic),
         ),
       );
     }).toList();
@@ -105,8 +106,17 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     _dio.interceptors
         .add(LogInterceptor(responseBody: true, requestBody: true));
     try {
-      Response response = await _dio.get(_getAllBoxesUrl);
-      print('Response body: ${response.data}');
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      Response response = await _dio.get(_getAllBoxesUrl, options: options);
       _responseBody = response.data.toString();
 
       // 将数据格式转换为JSON格式
@@ -114,7 +124,6 @@ class _BoxDataPaneState extends State<BoxDataPane> {
           RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
-      print('JSON response body: ${_responseBody}');
 
       List<dynamic> responseList = jsonDecode(_responseBody);
       List<Map<String, dynamic>> boxes =
@@ -215,16 +224,16 @@ class _BoxDataPaneState extends State<BoxDataPane> {
           'box_price': null,
         };
         return AlertDialog(
-          title: Text('添加箱子'),
+          title: const Text('添加箱子'),
           content: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 300),
+              constraints: const BoxConstraints(maxWidth: 300),
               child: SingleChildScrollView(
                   scrollDirection: Axis.vertical,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '箱子ID',
                         ),
                         keyboardType: TextInputType.number,
@@ -233,7 +242,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '容量',
                         ),
                         keyboardType: TextInputType.number,
@@ -242,7 +251,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '箱子名称',
                         ),
                         onChanged: (value) {
@@ -250,7 +259,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '箱子等级',
                         ),
                         keyboardType: TextInputType.number,
@@ -259,7 +268,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '箱子类型',
                         ),
                         onChanged: (value) {
@@ -267,7 +276,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '封面URL',
                         ),
                         onChanged: (value) {
@@ -275,7 +284,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '备注',
                         ),
                         onChanged: (value) {
@@ -283,11 +292,11 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         },
                       ),
                       TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '价格',
                         ),
-                        keyboardType:
-                            TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         onChanged: (value) {
                           newBox?['box_price'] = double.tryParse(value);
                         },
@@ -299,19 +308,29 @@ class _BoxDataPaneState extends State<BoxDataPane> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('取消'),
+              child: const Text('取消'),
             ),
             TextButton(
               onPressed: () async {
                 try {
-                  final response = await _dio.post(_addBoxUrl, data: newBox);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  await _dio.post(_addBoxUrl, options: options, data: newBox);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
                   print('Error: $error');
                 }
               },
-              child: Text('添加'),
+              child: const Text('添加'),
             ),
           ],
         );
@@ -321,11 +340,19 @@ class _BoxDataPaneState extends State<BoxDataPane> {
 
   Future<void> _deleteData() async {
     try {
-      Response response = await _dio.delete(_deleteBoxUrl, data: {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      await _dio.delete(_deleteBoxUrl, options: options, data: {
         "box_id": _selectedBoxIds,
       });
-      print(_selectedBoxIds);
-      print('Response body: ${response.data}');
       fetchData();
     } catch (error) {
       print('Error: $error');
@@ -376,16 +403,16 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('编辑箱子信息'),
+          title: const Text('编辑箱子信息'),
           content: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 300),
+            constraints: const BoxConstraints(maxWidth: 300),
             child: SingleChildScrollView(
               scrollDirection: Axis.vertical,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '箱子ID',
                     ),
                     keyboardType: TextInputType.number,
@@ -396,7 +423,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     },
                   ),
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '容量',
                     ),
                     keyboardType: TextInputType.number,
@@ -407,7 +434,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     },
                   ),
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '箱子名称',
                     ),
                     controller:
@@ -417,7 +444,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     },
                   ),
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '箱子等级',
                     ),
                     keyboardType: TextInputType.number,
@@ -428,7 +455,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     },
                   ),
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '箱子类型',
                     ),
                     controller:
@@ -438,7 +465,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     },
                   ),
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '封面URL',
                     ),
                     controller:
@@ -448,7 +475,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     },
                   ),
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '备注',
                     ),
                     controller: TextEditingController(text: boxData['notes']),
@@ -457,11 +484,11 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     },
                   ),
                   TextField(
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: '价格',
                     ),
                     keyboardType:
-                        TextInputType.numberWithOptions(decimal: true),
+                        const TextInputType.numberWithOptions(decimal: true),
                     controller:
                         TextEditingController(text: boxData['box_price']),
                     onChanged: (value) {
@@ -477,20 +504,30 @@ class _BoxDataPaneState extends State<BoxDataPane> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('取消'),
+              child: const Text('取消'),
             ),
             TextButton(
               onPressed: () async {
                 try {
-                  final response =
-                      await _dio.post(_editBoxUrl, data: editedBox);
+                  final prefs = await SharedPreferences.getInstance();
+                  //获取名为“token”的值，如果该键不存在，则返回默认值null
+                  final token = prefs.getString('token');
+                  // 处理获取的值
+                  final options = Options(
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                  );
+                  await _dio.post(_editBoxUrl,
+                      options: options, data: editedBox);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
                   print('Error: $error');
                 }
               },
-              child: Text('保存'),
+              child: const Text('保存'),
             ),
           ],
         );
@@ -577,7 +614,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                 ],
               ),
               const SizedBox(height: 10),
-              Divider(),
+              const Divider(),
               const SizedBox(height: 10),
               Expanded(
                 child: SingleChildScrollView(

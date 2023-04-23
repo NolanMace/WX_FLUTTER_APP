@@ -4,16 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'CustomDataTable.dart';
-import 'PaginationControl.dart';
+import 'custom_data_table.dart';
+import 'pagination_control.dart';
 
 class BoxItemConfigPane extends StatefulWidget {
-  final String id;
-  final Function(String)? toInstance;
-  const BoxItemConfigPane({Key? key, required this.id, this.toInstance})
+  final int id;
+  final Function(int)? toProductInstance;
+  final Function(int)? toBoxInstance;
+  const BoxItemConfigPane(
+      {Key? key, required this.id, this.toBoxInstance, this.toProductInstance})
       : super(key: key);
 
-  _BoxItemConfigPaneState createState() => _BoxItemConfigPaneState();
+  @override
+  State<BoxItemConfigPane> createState() => _BoxItemConfigPaneState();
 }
 
 class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
@@ -35,6 +38,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     'product_id',
     'img_url',
     'quantity',
+    'drawn_num',
+    'send_num',
     'product_level',
     'edit',
     'created_at',
@@ -48,6 +53,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     '商品ID',
     '图片',
     '数量',
+    'drawn_num',
+    'send_num',
     '商品等级',
     '编辑',
     '创建时间',
@@ -60,7 +67,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   final bool _hasDetailButton = false;
 
   //分页参数
-  late int _pageSize = 3;
+  final int _pageSize = 10;
   late int _currentPage = 0;
   late List<Map<String, dynamic>> _searchResult = [];
 
@@ -74,6 +81,12 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
 
   //请求数据
   Future<void> fetchData() async {
+    if (widget.id == 0) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       //获取名为“token”的值，如果该键不存在，则返回默认值null
@@ -86,7 +99,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
         },
       );
       Map<String, dynamic> queryParams = {
-        'box_id': int.parse(widget.id),
+        'box_id': widget.id,
       };
       Response response = await _dio.get(
         _getAllBoxItemConfigByBoxIdUrl,
@@ -109,6 +122,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
           "product_id": item["product_id"] ?? "",
           "quantity": item["quantity"] ?? "",
           "product_level": item["product_level"] ?? "",
+          "drawn_num": item["drawn_num"] ?? "",
+          "send_num": item["send_num"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
                   .replaceAll("+08:00", " ") ??
@@ -186,11 +201,13 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
       context: context,
       builder: (context) {
         newItem = {
-          'box_id': int.parse(widget.id),
+          'box_id': widget.id,
           'box_template_config_id': null,
           'product_id': null,
           'quantity': null,
           'product_level': null,
+          'drawn_num': null,
+          'send_num': null,
         };
         return AlertDialog(
           title: const Text('添加箱子模板'),
@@ -202,7 +219,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextField(
-                        controller: TextEditingController(text: widget.id),
+                        controller:
+                            TextEditingController(text: widget.id.toString()),
                         enabled: false,
                         decoration: const InputDecoration(
                           labelText: '箱子ID',
@@ -243,6 +261,24 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                               int.tryParse(value);
                         },
                       ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '手脚',
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          newItem?['drawn_num'] = int.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '触发赠送',
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          newItem?['send_num'] = int.tryParse(value);
+                        },
+                      ),
                     ],
                   ))),
           actions: [
@@ -265,6 +301,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                       'Content-Type': 'application/json',
                     },
                   );
+                  print(newItem);
                   await _dio.post(_addConfigUrl,
                       options: options, data: newItem);
                   Navigator.of(context).pop();
@@ -348,6 +385,10 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
         int.tryParse(editedConfigItem['product_id'].toString());
     editedConfigItem['quantity'] =
         int.tryParse(editedConfigItem['quantity'].toString());
+    editedConfigItem['drawn_num'] =
+        int.tryParse(editedConfigItem['drawn_num'].toString());
+    editedConfigItem['send_num'] =
+        int.tryParse(editedConfigItem['send_num'].toString());
     editedConfigItem.remove("created_at");
     editedConfigItem.remove("updated_at");
     await showDialog(
@@ -388,7 +429,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                         text: configItem['box_template_config_id'].toString()),
                     onChanged: (value) {
                       editedConfigItem['box_template_config_id'] =
-                          int.parse(value);
+                          int.tryParse(value);
                     },
                   ),
                   TextField(
@@ -398,7 +439,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                     controller: TextEditingController(
                         text: configItem['product_id'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['product_id'] = int.parse(value);
+                      editedConfigItem['product_id'] = int.tryParse(value);
                     },
                   ),
                   TextField(
@@ -409,7 +450,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                     controller: TextEditingController(
                         text: configItem['quantity'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['quantity'] = int.parse(value);
+                      editedConfigItem['quantity'] = int.tryParse(value);
                     },
                   ),
                   TextField(
@@ -420,6 +461,28 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                         text: configItem['product_level']),
                     onChanged: (value) {
                       editedConfigItem['product_level'] = value.toString();
+                    },
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '手脚',
+                    ),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(
+                        text: configItem['drawn_num'].toString()),
+                    onChanged: (value) {
+                      editedConfigItem['drawn_num'] = int.tryParse(value);
+                    },
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '发货数量',
+                    ),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(
+                        text: configItem['send_num'].toString()),
+                    onChanged: (value) {
+                      editedConfigItem['send_num'] = int.tryParse(value);
                     },
                   ),
                 ],
@@ -465,7 +528,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
 
   void _addBoxInstance() async {
     Map<String, dynamic>? newItem = {
-      'box_id': int.tryParse(widget.id),
+      'box_id': widget.id,
       'app_id': null,
       'box_template_config_id': null,
       'box_quantity': null,
@@ -485,7 +548,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                           labelText: '箱子ID',
                         ),
                         keyboardType: TextInputType.number,
-                        controller: TextEditingController(text: widget.id),
+                        controller:
+                            TextEditingController(text: widget.id.toString()),
                         enabled: false,
                       ),
                       TextField(
@@ -700,8 +764,18 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                             width: 100,
                             height: 30,
                             child: ElevatedButton(
-                              onPressed: () => widget.toInstance!(widget.id),
-                              child: const Text('查看实例'),
+                              onPressed: () => widget.toBoxInstance!(widget.id),
+                              child: const Text('查看箱子实例'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 100,
+                            height: 30,
+                            child: ElevatedButton(
+                              onPressed: () =>
+                                  widget.toProductInstance!(widget.id),
+                              child: const Text('查看商品实例'),
                             ),
                           ),
                         ]),

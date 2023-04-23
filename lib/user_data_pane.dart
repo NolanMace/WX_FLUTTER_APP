@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:mis/CustomDataTable.dart';
+import 'package:mis/custom_data_table.dart';
 import 'package:mis/config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'PaginationControl.dart';
+import 'pagination_control.dart';
 
 class UserDataPane extends StatefulWidget {
   UserDataPane({

@@ -7,50 +7,46 @@ import 'package:flutter/material.dart';
 import 'custom_data_table.dart';
 import 'pagination_control.dart';
 
-class ProductInstancePane extends StatefulWidget {
+class BoxInstancePane extends StatefulWidget {
   final int id;
-  const ProductInstancePane({Key? key, required this.id}) : super(key: key);
+  const BoxInstancePane({Key? key, required this.id}) : super(key: key);
 
   @override
-  State<ProductInstancePane> createState() => _ProductInstancePaneState();
+  State<BoxInstancePane> createState() => _BoxInstancePaneState();
 }
 
-class _ProductInstancePaneState extends State<ProductInstancePane> {
+class _BoxInstancePaneState extends State<BoxInstancePane> {
   final Dio _dio = Dio();
   //请求参数
-  final String _getBoxItemsByBoxId = AppConfig.getBoxItemsByBoxIdUrl;
-  final String _deleteBoxItemsUrl = AppConfig.deleteBoxItemsUrl;
-  final String _updateBoxItemUrl = AppConfig.updateBoxItemUrl;
+  final String _getBoxInstanceByBoxId = AppConfig.getBoxInstanceByBoxId;
+  final String _deleteBoxInstanceByIds = AppConfig.deleteBoxInstanceByIds;
+  final String _updateBoxInstance = AppConfig.updateBoxInstance;
   late List<Map<String, dynamic>> _productInstanceData;
   late List<Map<String, dynamic>> _appIdResult;
 
   //表格参数
   final List<String> _columns = [
     'select',
-    'box_item_id',
-    'app_id',
+    'auto_id'
+        'app_id',
     'box_id',
-    'product_id',
     'box_number',
-    'product_level',
+    'left_number',
+    'total_number',
     'img_url',
-    'is_drawn',
-    'notes',
     'edit',
     'created_at',
     'updated_at',
   ];
   final _columnsTitle = [
     '全选',
-    '实例ID',
+    '自增ID',
     '应用ID',
     '箱子ID',
-    '商品ID',
     '箱子编号',
-    '商品等级',
+    '剩余数量',
+    '总数量',
     '图片',
-    '是否已抽取',
-    '备注',
     '编辑',
     '创建时间',
     '更新时间',
@@ -93,7 +89,7 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
         'box_id': widget.id,
       };
       Response response = await _dio.get(
-        _getBoxItemsByBoxId,
+        _getBoxInstanceByBoxId,
         queryParameters: queryParams,
         options: options,
       );
@@ -109,14 +105,12 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
       List<Map<String, dynamic>> productInstanceData =
           responseList.map<Map<String, dynamic>>((item) {
         return {
-          "box_item_id": item["box_item_id"] ?? "",
+          "auto_id": item["auto_id"] ?? "",
           "app_id": item["app_id"] ?? "",
           "box_id": item["box_id"] ?? "",
-          "product_id": item["product_id"] ?? "",
           "box_number": item["box_number"] ?? "",
-          "product_level": item["product_level"] ?? "",
-          "is_drawn": item["is_drawn"] ?? "",
-          "notes": item["notes"] ?? "",
+          "left_number": item["left_number"] ?? "",
+          "total_number": item["total_number"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
                   .replaceAll("+08:00", " ") ??
@@ -130,6 +124,7 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
 
       setState(() {
         _selectedItemIds.clear();
+        _currentPage = 0;
         _productInstanceData = productInstanceData;
         _searchResult = _productInstanceData;
         _currentPageData = _searchResult
@@ -195,7 +190,7 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
       if (value == true) {
         _selectedItemIds.clear();
         _selectedItemIds = _searchResult.map((item) {
-          int id = int.tryParse(item["box_item_id"])!;
+          int id = int.tryParse(item["auto_id"])!;
           return id;
         }).toList();
         _isAllSelected = false;
@@ -238,8 +233,8 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
         },
       );
       Response response =
-          await _dio.delete(_deleteBoxItemsUrl, options: options, data: {
-        "box_item_ids": _selectedItemIds,
+          await _dio.delete(_deleteBoxInstanceByIds, options: options, data: {
+        "auto_ids": _selectedItemIds,
       });
       print(_selectedItemIds);
       print('Response body: ${response.data}');
@@ -285,16 +280,16 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
   void _editData(Map<String, dynamic> configItem) async {
     Map<String, dynamic> editedConfigItem =
         Map<String, dynamic>.from(configItem);
-    editedConfigItem['box_item_id'] =
-        int.tryParse(editedConfigItem['box_item_id'].toString());
+    editedConfigItem['auto_id'] =
+        int.tryParse(editedConfigItem['auto_id'].toString());
     editedConfigItem['box_id'] =
         int.tryParse(editedConfigItem['box_id'].toString());
-    editedConfigItem['product_id'] =
-        int.tryParse(editedConfigItem['product_id'].toString());
     editedConfigItem['box_number'] =
         int.tryParse(editedConfigItem['box_number'].toString());
-    editedConfigItem['is_drawn'] =
-        int.tryParse(editedConfigItem['is_drawn'].toString());
+    editedConfigItem['total_number'] =
+        int.tryParse(editedConfigItem['total_number'].toString());
+    editedConfigItem['left_number'] =
+        int.tryParse(editedConfigItem['left_number'].toString());
     editedConfigItem.remove("created_at");
     editedConfigItem.remove("updated_at");
     await showDialog(
@@ -311,11 +306,11 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                 children: [
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '实例ID',
+                      labelText: '自增ID',
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: configItem['box_item_id'].toString()),
+                        text: configItem['auto_id'].toString()),
                     enabled: false,
                   ),
                   TextField(
@@ -338,53 +333,35 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                   ),
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '商品ID',
-                    ),
-                    controller: TextEditingController(
-                        text: configItem['product_id'].toString()),
-                    onChanged: (value) {
-                      editedConfigItem['product_id'] = int.parse(value);
-                    },
-                  ),
-                  TextField(
-                    decoration: const InputDecoration(
                       labelText: '箱子编号',
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
                         text: configItem['box_number'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['box_number'] = int.parse(value);
+                      editedConfigItem['box_number'] = int.tryParse(value);
                     },
                   ),
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '商品等级',
+                      labelText: '总数量',
                     ),
+                    keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: configItem['product_level']),
+                        text: configItem['total_number'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['product_level'] = value.toString();
+                      editedConfigItem['total_number'] = int.tryParse(value);
                     },
                   ),
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '是否已抽取',
+                      labelText: '剩余数量',
                     ),
+                    keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: configItem['is_drawn'].toString()),
+                        text: configItem['left_number'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['is_drawn'] = int.parse(value);
-                    },
-                  ),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: '备注',
-                    ),
-                    controller: TextEditingController(
-                        text: configItem['notes'].toString()),
-                    onChanged: (value) {
-                      editedConfigItem['notes'] = value.toString();
+                      editedConfigItem['left_number'] = int.tryParse(value);
                     },
                   ),
                 ],
@@ -411,7 +388,7 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                       'Content-Type': 'application/json',
                     },
                   );
-                  await _dio.post(_updateBoxItemUrl,
+                  await _dio.post(_updateBoxInstance,
                       options: options, data: editedConfigItem);
                   Navigator.of(context).pop();
                   fetchData();
@@ -539,19 +516,11 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                               },
                               items: <String>[
                                 '箱子编号',
-                                '商品等级',
-                                '商品ID'
                               ].map<DropdownMenuItem<String>>((String value) {
                                 late String key;
                                 switch (value) {
                                   case '箱子编号':
                                     key = 'box_number';
-                                    break;
-                                  case '商品等级':
-                                    key = 'product_level';
-                                    break;
-                                  case '商品ID':
-                                    key = 'product_id';
                                     break;
                                 }
                                 return DropdownMenuItem<String>(

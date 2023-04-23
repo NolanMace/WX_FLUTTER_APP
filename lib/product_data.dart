@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:mis/config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'CustomDataTable.dart';
-import 'PaginationControl.dart';
+import 'custom_data_table.dart';
+import 'pagination_control.dart';
 
 class ProductData extends StatefulWidget {
-  ProductData({
+  const ProductData({
     Key? key,
   }) : super(key: key);
 
   @override
-  _ProductDataState createState() => _ProductDataState();
+  State<ProductData> createState() => _ProductDataState();
 }
 
 class _ProductDataState extends State<ProductData> {

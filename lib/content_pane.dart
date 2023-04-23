@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'BoxItemConfigPane.dart';
-import 'package:mis/ProductData.dart';
-import 'UserDataPane.dart';
-import 'BoxDataPane.dart';
+import 'box_display_pane.dart';
+import 'box_instance_pane.dart';
+import 'box_item_config_pane.dart';
+import 'product_data.dart';
+import 'user_data_pane.dart';
+import 'box_data_pane.dart';
 import 'product_instance_pane.dart';
+import 'shipment_pane.dart';
 
 class ContentPane extends StatefulWidget {
   final String subCategory;
@@ -23,19 +26,33 @@ class _ContentPaneState extends State<ContentPane>
 
   late TabController _tabController;
 
-  String _boxId = '';
+  int _boxId = 0;
 
-  void _toDetail(String id) {
+  void _toDisplay(int id) {
     setState(() {
       _boxId = id;
       _tabController.index = 1;
     });
   }
 
-  void _toInstance(String id) {
+  void _toDetail(int id) {
     setState(() {
       _boxId = id;
       _tabController.index = 2;
+    });
+  }
+
+  void _toBoxInstance(int id) {
+    setState(() {
+      _boxId = id;
+      _tabController.index = 3;
+    });
+  }
+
+  void _toProductInstance(int id) {
+    setState(() {
+      _boxId = id;
+      _tabController.index = 4;
     });
   }
 
@@ -43,7 +60,7 @@ class _ContentPaneState extends State<ContentPane>
   void initState() {
     // 在 initState 中进行初始化
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -68,10 +85,16 @@ class _ContentPaneState extends State<ContentPane>
                 text: "箱子模板",
               ),
               Tab(
+                text: "上架详情",
+              ),
+              Tab(
                 text: "箱子配置",
               ),
               Tab(
                 text: "箱子实例",
+              ),
+              Tab(
+                text: "商品实例",
               ),
             ],
             onTap: (index) {
@@ -87,16 +110,24 @@ class _ContentPaneState extends State<ContentPane>
               children: [
                 BoxDataPane(
                   toDetail: _toDetail,
+                  toDisplay: _toDisplay,
                 ),
-                BoxItemConfigPane(id: _boxId, toInstance: _toInstance),
+                BoxDisplay(boxId: _boxId),
+                BoxItemConfigPane(
+                    id: _boxId,
+                    toBoxInstance: _toBoxInstance,
+                    toProductInstance: _toProductInstance),
+                BoxInstancePane(id: _boxId),
                 ProductInstancePane(id: _boxId)
               ],
             ),
           ),
         ],
       );
-    } else {
+    } else if (widget.subCategory == "Subcategory 3") {
       return ProductData();
+    } else {
+      return const ShipmentPane();
     }
   }
 }

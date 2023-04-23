@@ -1,18 +1,18 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mis/config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'CustomDataTable.dart'; // 用于显示表格
-import 'PaginationControl.dart';
+import 'pagination_control.dart';
 
 class BoxDataPane extends StatefulWidget {
   const BoxDataPane({
     Key? key,
     this.toDetail,
+    this.toDisplay,
   }) : super(key: key);
 
-  final Function(String)? toDetail;
+  final Function(int)? toDetail;
+  final Function(int)? toDisplay;
 
   @override
   _BoxDataPaneState createState() => _BoxDataPaneState();
@@ -25,52 +25,23 @@ class _BoxDataPaneState extends State<BoxDataPane> {
   final _deleteBoxUrl = AppConfig.deleteBoxUrl;
   final _addBoxUrl = AppConfig.addBoxUrl;
   final _editBoxUrl = AppConfig.updateBoxUrl;
-  late List<Map<String, dynamic>> _boxes;
-  late String _responseBody;
+  late List<dynamic> _boxes;
 
 //表格相关参数
-  final List<String> columnTitles = [
-    '选择',
-    "箱子ID",
-    "容量",
-    "箱子名称",
-    "箱子等级",
-    "箱子类型",
-    "封面URL",
-    "备注",
-    '价格',
-    '配置详情',
-    '编辑',
-    '创建时间',
-    '更新时间',
-  ];
-  final List<String> _attributes = [
-    'select', //一些属性用于填充，保持列一致，实际对象并无此属性
-    'box_id',
-    'capacity',
-    'box_name',
-    'box_level',
-    'box_type',
-    'image_url',
-    'notes',
-    'box_price',
-    'config',
-    'edit',
-    'created_at',
-    'updated_at'
-  ];
-  final int _imageColumnIndex = 6;
   late List<DataColumn> _columns;
   late List<int> _selectedBoxIds;
   late List<dynamic> _currentPageData;
 
   //分页相关参数
-  late int _pageSize;
+  final int _pageSize = 20;
   late int _currentPage = 0;
-  late List<Map<String, dynamic>> _searchResult;
+  late List<dynamic> _searchResult;
 
   //判断是否正在加载数据
   bool _isLoading = true;
+
+  //判断是否全选
+  bool _isAllSelected = false;
 
   //输入框控制器
   final _searchController = TextEditingController();
@@ -89,14 +60,89 @@ class _BoxDataPaneState extends State<BoxDataPane> {
   @override
   void initState() {
     super.initState();
-    _columns = columnTitles.map<DataColumn>((text) {
-      return DataColumn(
-        label: Text(
-          text,
-          style: const TextStyle(fontStyle: FontStyle.italic),
+    _columns = [
+      DataColumn(
+          label: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text("全选", style: TextStyle(fontSize: 14)),
+          SizedBox(
+              width: 40,
+              child: Checkbox(
+                  value: _isAllSelected,
+                  onChanged: (value) => _selectAll(_isAllSelected)))
+        ],
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 60,
+        child: Text("箱子ID", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 60,
+        child: Text("容量", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 100,
+        child: Text(
+          "箱子名称",
+          style: TextStyle(fontSize: 14),
+          overflow: TextOverflow.ellipsis,
         ),
-      );
-    }).toList();
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 70,
+        child: Text("箱子等级", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 70,
+        child: Text("箱子类型", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 70,
+        child: Text("封面URL", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 80,
+        child: Text("备注", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 60,
+        child: Text("价格", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 80,
+        child: Text("配置详情", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 80,
+        child: Text("上架详情", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 60,
+        child: Text("编辑", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 80,
+        child: Text("创建时间", style: TextStyle(fontSize: 14)),
+      )),
+      const DataColumn(
+          label: SizedBox(
+        width: 80,
+        child: Text("更新时间", style: TextStyle(fontSize: 14)),
+      )),
+    ];
     _selectedBoxIds = [];
     fetchData();
   }
@@ -117,41 +163,18 @@ class _BoxDataPaneState extends State<BoxDataPane> {
         },
       );
       Response response = await _dio.get(_getAllBoxesUrl, options: options);
-      _responseBody = response.data.toString();
-
-      // 将数据格式转换为JSON格式
-      _responseBody = _responseBody.replaceAllMapped(
-          RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
-          (match) =>
-              '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
-
-      List<dynamic> responseList = jsonDecode(_responseBody);
-      List<Map<String, dynamic>> boxes =
-          responseList.map<Map<String, dynamic>>((item) {
-        return {
-          "box_id": item["box_id"],
-          "capacity": item["capacity"] ?? "",
-          "box_name": item["box_name"] ?? "",
-          "box_level": item["box_level"] ?? "",
-          "box_type": item["box_type"] ?? "",
-          "image_url": item["image_url"] ?? "assets/touxiang.jpg",
-          "notes": item["notes"] ?? "",
-          "box_price": item["box_price"] ?? "",
-          "created_at": item["created_at"]
-                  .replaceAll("T", " ")
-                  .replaceAll("+08:00", " ") ??
-              "",
-          "updated_at": item["updated_at"]
-                  .replaceAll("T", " ")
-                  .replaceAll("+08:00", " ") ??
-              "",
-        };
-      }).toList();
-
+      print(response.data);
+      if (response.data == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
       setState(() {
         _selectedBoxIds.clear();
-        _boxes = boxes;
-        _pageSize = 20;
+        _isAllSelected = false;
+        _currentPage = 0;
+        _boxes = response.data;
         _searchResult = _boxes;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
@@ -188,6 +211,23 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
         _loadData();
+      }
+    });
+  }
+
+  //全选相关函数
+  void _selectAll(bool? value) {
+    setState(() {
+      if (value == true) {
+        _selectedBoxIds.clear();
+        _selectedBoxIds = _searchResult.map((item) {
+          int id = item["box_id"];
+          return id;
+        }).toList();
+        _isAllSelected = false;
+      } else {
+        _selectedBoxIds.clear();
+        _isAllSelected = true;
       }
     });
   }
@@ -392,13 +432,17 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     );
   }
 
-  void _editBox(Map<String, dynamic> boxData) async {
-    Map<String, dynamic> editedBox = Map<String, dynamic>.from(boxData);
-    editedBox['box_id'] = int.tryParse(editedBox['box_id'].toString());
-    editedBox['capacity'] = int.tryParse(editedBox['capacity'].toString());
-    editedBox['box_price'] = double.tryParse(editedBox['box_price'].toString());
-    editedBox.remove("created_at");
-    editedBox.remove("updated_at");
+  void _editBox(boxData) async {
+    Map<String, dynamic> editedBox = {
+      'box_id': boxData['box_id'],
+      'capacity': boxData['capacity'],
+      'box_name': boxData['box_name'],
+      'box_level': boxData['box_level'],
+      'box_type': boxData['box_type'],
+      'image_url': boxData['image_url'],
+      'notes': boxData['notes'],
+      'box_price': boxData['box_price'],
+    };
     await showDialog(
       context: context,
       builder: (context) {
@@ -418,9 +462,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
                         text: boxData['box_id'].toString()),
-                    onChanged: (value) {
-                      editedBox['box_id'] = int.tryParse(value);
-                    },
+                    enabled: false,
                   ),
                   TextField(
                     decoration: const InputDecoration(
@@ -440,7 +482,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     controller:
                         TextEditingController(text: boxData['box_name']),
                     onChanged: (value) {
-                      editedBox['box_name'] = value.toString();
+                      editedBox['box_name'] = value;
                     },
                   ),
                   TextField(
@@ -480,7 +522,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     ),
                     controller: TextEditingController(text: boxData['notes']),
                     onChanged: (value) {
-                      editedBox['notes'] = value.toString();
+                      editedBox['notes'] = value;
                     },
                   ),
                   TextField(
@@ -489,8 +531,8 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     ),
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    controller:
-                        TextEditingController(text: boxData['box_price']),
+                    controller: TextEditingController(
+                        text: boxData['box_price'].toString()),
                     onChanged: (value) {
                       editedBox['box_price'] = double.tryParse(value);
                     },
@@ -613,9 +655,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              const Divider(),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               Expanded(
                 child: SingleChildScrollView(
                     scrollDirection: Axis.vertical,
@@ -625,15 +665,173 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                             width: double.infinity,
                             child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
-                                child: CustomDataTable(
-                                    hasDetailButton: true,
-                                    toDetail: widget.toDetail,
-                                    columns: _attributes,
-                                    columnNames: _columns,
-                                    selectedItemIds: _selectedBoxIds,
-                                    currentPageData: _currentPageData,
-                                    imageColumnIndex: _imageColumnIndex,
-                                    editData: _editBox))),
+                                child: DataTable(
+                                  columns: _columns,
+                                  rows: List<DataRow>.generate(
+                                      _currentPageData.length, (index) {
+                                    final item = _currentPageData[index];
+                                    return DataRow(cells: [
+                                      DataCell(
+                                        Checkbox(
+                                            value: _selectedBoxIds
+                                                .contains(item['box_id']),
+                                            onChanged: (bool? value) {
+                                              setState(() {
+                                                int? id = item['box_id'];
+                                                if (value!) {
+                                                  _selectedBoxIds.add(id!);
+                                                } else {
+                                                  _selectedBoxIds.remove(id);
+                                                }
+                                              });
+                                            }),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 50,
+                                          child: Text(
+                                            item['box_id'].toString(),
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 60,
+                                          child: Text(
+                                            item['capacity'].toString(),
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 100,
+                                          child: Text(
+                                            item['box_name'],
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 50,
+                                          child: Text(
+                                            item['box_level'],
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 50,
+                                          child: Text(
+                                            item['box_type'],
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                      ),
+                                      const DataCell(
+                                        SizedBox(
+                                          width: 50,
+                                          height: 50,
+                                          child: Image(
+                                            image: AssetImage(
+                                                'assets/wuxianshang.jpg'),
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 80,
+                                          child: Text(
+                                            item['notes'].toString(),
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 4,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 60,
+                                          child: Text(
+                                            item['box_price'].toString(),
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 100,
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              widget.toDetail!(item['box_id']);
+                                            },
+                                            child: const Text('配置详情',
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white)),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 100,
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              widget.toDisplay!(item['box_id']);
+                                            },
+                                            child: const Text('上架详情',
+                                                style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white)),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        SizedBox(
+                                          width: 60,
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              _editBox(item);
+                                            },
+                                            child: const Text('编辑',
+                                                style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white)),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(SizedBox(
+                                        width: 80,
+                                        child: Text(
+                                          item['created_at'],
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      )),
+                                      DataCell(SizedBox(
+                                        width: 80,
+                                        child: Text(
+                                          item['updated_at'],
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      )),
+                                    ]);
+                                  }),
+                                ))),
                         PaginationControl(
                             currentPage: _currentPage,
                             totalItems: _searchResult.length,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'ContentPane.dart';
-import 'NavigationPane.dart';
+import 'content_pane.dart';
+import 'navigation_pane.dart';
 
 class AfterLogin extends StatefulWidget {
   const AfterLogin({Key? key}) : super(key: key);

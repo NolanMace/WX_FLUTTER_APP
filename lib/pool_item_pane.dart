@@ -8,65 +8,78 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'custom_data_table.dart';
 import 'pagination_control.dart';
 
-class ProductData extends StatefulWidget {
-  const ProductData({
+class PoolItemData extends StatefulWidget {
+  final int poolId;
+  const PoolItemData({
     Key? key,
+    required this.poolId,
   }) : super(key: key);
 
   @override
-  State<ProductData> createState() => _ProductDataState();
+  State<PoolItemData> createState() => _PoolItemDataState();
 }
 
-class _ProductDataState extends State<ProductData> {
+class _PoolItemDataState extends State<PoolItemData> {
   final Dio _dio = Dio();
   //网络请求相关参数
-  final _getAllProductsUrl = AppConfig.getAllProductsUrl;
-  final _deleteProductUrl = AppConfig.deleteProductUrl;
-  final _addProductUrl = AppConfig.addProductUrl;
-  final _editProductUrl = AppConfig.updateProductUrl;
-  late List<Map<String, dynamic>> _boxes;
+  final _getPoolItemsByPoolIdUrl = AppConfig.getPoolItemsByPoolIdUrl;
+  final _deletePoolItemUrl = AppConfig.deletePoolItemUrl;
+  final _addPoolItemUrl = AppConfig.addPoolItemUrl;
+  final _updatePoolItemUrl = AppConfig.updatePoolItemUrl;
+  late List<Map<String, dynamic>> _items;
+  late List<Map<String, dynamic>> _appIdResult;
   late String _responseBody;
 
 //表格相关参数
   final List<String> columnTitles = [
     '选择',
+    "实例ID",
+    "APPID",
+    "池子ID",
     "商品ID",
-    "商品名称",
-    "商品图片",
-    "是否现货",
+    "图片",
+    "商品等级",
+    "概率",
+    "DrawnNum",
     "备注",
-    "发售时间",
     '编辑',
     '创建时间',
     '更新时间',
   ];
   final List<String> _attributes = [
     'select',
+    'pool_item_id',
+    'app_id',
+    'pool_id',
     'product_id',
-    'product_name',
-    'product_image_url',
-    'in_stock',
+    "product_image_url",
+    'product_level',
+    'probability',
+    'drawn_num',
     'notes',
-    'release_date',
     'edit',
     'created_at',
     'updated_at'
   ];
-  final int _imageColumnIndex = 3;
+  final int _imageColumnIndex = 5;
   late List<DataColumn> _columns;
-  late List<int> _selectedProductIds;
+  late List<int> _selectedPoolItemIds;
   late List<dynamic> _currentPageData;
 
   //分页相关参数
-  late int _pageSize;
+  final int _pageSize = 10;
   late int _currentPage = 0;
   late List<Map<String, dynamic>> _searchResult;
 
   //判断是否正在加载数据
   bool _isLoading = true;
 
+  //判断是否全选
+  bool _isAllSelected = false;
+
   //输入框控制器
   final _searchController = TextEditingController();
+  final _appIdController = TextEditingController();
 
   late String _dropdownValue = "product_id"; //下拉选择默认值
 
@@ -82,20 +95,55 @@ class _ProductDataState extends State<ProductData> {
   @override
   void initState() {
     super.initState();
-    _columns = columnTitles.map<DataColumn>((text) {
-      return DataColumn(
-        label: Text(
-          text,
-          style: const TextStyle(fontStyle: FontStyle.italic),
-        ),
-      );
-    }).toList();
-    _selectedProductIds = [];
+    _columns = List<DataColumn>.generate(columnTitles.length, (index) {
+      if (index == 0) {
+        return DataColumn(
+            label: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text("全选", style: TextStyle(fontSize: 14)),
+            SizedBox(
+                width: 40,
+                child: Checkbox(
+                    value: _isAllSelected,
+                    onChanged: (value) => _selectAll(_isAllSelected)))
+          ],
+        ));
+      } else {
+        return DataColumn(
+          label: SizedBox(
+            width: 70,
+            child: Text(
+              columnTitles[index],
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        );
+      }
+    });
+    _selectedPoolItemIds = [];
+    _currentPageData = [];
+    _searchResult = [];
     fetchData();
+  }
+
+  @override
+  void didUpdateWidget(covariant PoolItemData oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 如果新的 `id` 与旧的 `id` 不同，那么执行一些操作，例如重新获取数据
+    if (widget.poolId != oldWidget.poolId) {
+      fetchData(); // 重新获取数据
+    }
   }
 
   //获取数据
   Future<void> fetchData() async {
+    if (widget.poolId == 0) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
     _dio.interceptors
         .add(LogInterceptor(responseBody: true, requestBody: true));
     try {
@@ -109,7 +157,9 @@ class _ProductDataState extends State<ProductData> {
           'Content-Type': 'application/json',
         },
       );
-      Response response = await _dio.get(_getAllProductsUrl, options: options);
+      Response response = await _dio.get(queryParameters: {
+        'pool_id': widget.poolId,
+      }, _getPoolItemsByPoolIdUrl, options: options);
       _responseBody = response.data.toString();
 
       // 将数据格式转换为JSON格式
@@ -118,15 +168,17 @@ class _ProductDataState extends State<ProductData> {
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
       List<dynamic> responseList = jsonDecode(_responseBody);
-      List<Map<String, dynamic>> boxes =
+      List<Map<String, dynamic>> items =
           responseList.map<Map<String, dynamic>>((item) {
         return {
           "product_id": item["product_id"],
-          "product_name": item["product_name"] ?? "",
-          "product_image_url": item["product_image_url"] ?? "",
-          "in_stock": item["in_stock"] ?? "",
+          "app_id": item["app_id"] ?? "",
+          "pool_item_id": item["pool_item_id"] ?? "",
+          "pool_id": item["pool_id"] ?? "",
+          "product_level": item["product_level"] ?? "",
+          "probability": item["probability"] ?? "",
+          "drawn_num": item["drawn_num"] ?? "",
           "notes": item["notes"] ?? "",
-          "release_date": item["release_date"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
                   .replaceAll("+08:00", " ") ??
@@ -139,10 +191,9 @@ class _ProductDataState extends State<ProductData> {
       }).toList();
 
       setState(() {
-        _selectedProductIds.clear();
-        _boxes = boxes;
-        _pageSize = 20;
-        _searchResult = _boxes;
+        _selectedPoolItemIds.clear();
+        _items = items;
+        _searchResult = _items;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
             .take(_pageSize)
@@ -182,37 +233,77 @@ class _ProductDataState extends State<ProductData> {
     });
   }
 
+  //全选相关函数
+  void _selectAll(bool? value) {
+    setState(() {
+      if (value == true) {
+        _selectedPoolItemIds.clear();
+        _selectedPoolItemIds = _searchResult.map((item) {
+          int id = item["pool_id"];
+          return id;
+        }).toList();
+        _isAllSelected = false;
+      } else {
+        _selectedPoolItemIds.clear();
+        _isAllSelected = true;
+      }
+    });
+  }
+
+  //选择APPID
+  void _selectAppId() {
+    String keyword = _appIdController.text.trim();
+    _currentPage = 0;
+    if (keyword.isEmpty) {
+      fetchData();
+    } else {
+      setState(() {
+        _selectedPoolItemIds.clear();
+        _appIdResult = _items.where((element) {
+          return element["app_id"] == _appIdController.text.trim();
+        }).toList();
+        _searchResult = _appIdResult;
+        _loadData();
+      });
+    }
+  }
+
   //增删查改相关函数
-  void _searchBoxes() {
+  void _searchItems() {
     String keyword = _searchController.text.trim();
     _currentPage = 0;
     if (keyword.isEmpty) {
       fetchData();
     } else {
       setState(() {
-        _searchResult = _boxes.where((user) {
-          return user[_dropdownValue].toString().contains(keyword);
+        _selectedPoolItemIds.clear();
+        _searchResult = _appIdResult.where((user) {
+          String value = user[_dropdownValue].toString();
+          RegExp regExp = RegExp(r"\b" + keyword + r"\b");
+          return regExp.hasMatch(value);
         }).toList(); // 根据关键字和选择的属性筛选用户
         _loadData();
       });
     }
   }
 
-  void _addBox() async {
-    Map<String, dynamic>? newBox;
+  void _additem() async {
+    Map<String, dynamic>? newItem;
     await showDialog(
       context: context,
       builder: (context) {
-        newBox = {
+        newItem = {
           'product_id': null,
-          'product_name': null,
-          'product_image_url': null,
-          'in_stock': null,
+          'app_id': null,
+          'pool_item_id': null,
+          'pool_id': widget.poolId,
+          'product_level': null,
+          'probability': null,
+          'drawn_num': null,
           'notes': null,
-          'release_date': null,
         };
         return AlertDialog(
-          title: const Text('添加箱子'),
+          title: const Text('添加item'),
           content: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 300),
               child: SingleChildScrollView(
@@ -222,35 +313,55 @@ class _ProductDataState extends State<ProductData> {
                     children: [
                       TextField(
                         decoration: const InputDecoration(
+                          labelText: '池子ID',
+                        ),
+                        keyboardType: TextInputType.number,
+                        controller: TextEditingController(
+                            text: widget.poolId.toString()),
+                        enabled: false,
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'APP ID',
+                        ),
+                        onChanged: (value) {
+                          newItem?['app_id'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
                           labelText: '商品ID',
                         ),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
-                          newBox?['product_id'] = int.tryParse(value);
+                          newItem?['product_id'] = int.tryParse(value);
                         },
                       ),
                       TextField(
                         decoration: const InputDecoration(
-                          labelText: '商品名称',
+                          labelText: '商品等级',
                         ),
                         onChanged: (value) {
-                          newBox?['product_name'] = value.toString();
+                          newItem?['product_level'] = value.toString();
                         },
                       ),
                       TextField(
                         decoration: const InputDecoration(
-                          labelText: '封面URL',
+                          labelText: '概率',
                         ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         onChanged: (value) {
-                          newBox?['product_image_url'] = value.toString();
+                          newItem?['probability'] = double.tryParse(value);
                         },
                       ),
                       TextField(
                         decoration: const InputDecoration(
-                          labelText: '是否现货',
+                          labelText: 'Drawn Num',
                         ),
+                        keyboardType: TextInputType.number,
                         onChanged: (value) {
-                          newBox?['in_stock'] = value.toString();
+                          newItem?['drawn_num'] = int.tryParse(value);
                         },
                       ),
                       TextField(
@@ -258,15 +369,7 @@ class _ProductDataState extends State<ProductData> {
                           labelText: '备注',
                         ),
                         onChanged: (value) {
-                          newBox?['notes'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '发售时间',
-                        ),
-                        onChanged: (value) {
-                          newBox?['release_date'] = value.toString();
+                          newItem?['notes'] = value.toString();
                         },
                       ),
                     ],
@@ -291,8 +394,8 @@ class _ProductDataState extends State<ProductData> {
                       'Content-Type': 'application/json',
                     },
                   );
-                  await _dio.post(_addProductUrl,
-                      options: options, data: newBox);
+                  await _dio.post(_addPoolItemUrl,
+                      options: options, data: newItem);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -320,8 +423,8 @@ class _ProductDataState extends State<ProductData> {
         },
       );
       Response response =
-          await _dio.delete(_deleteProductUrl, options: options, data: {
-        "product_ids": _selectedProductIds,
+          await _dio.delete(_deletePoolItemUrl, options: options, data: {
+        "pool_item_ids": _selectedPoolItemIds,
       });
       print('Response body: ${response.data}');
       fetchData();
@@ -333,8 +436,8 @@ class _ProductDataState extends State<ProductData> {
     }
   }
 
-  void _deleteBoxes() {
-    if (_selectedProductIds.isEmpty) {
+  void _deleteItems() {
+    if (_selectedPoolItemIds.isEmpty) {
       return;
     }
     showDialog(
@@ -363,11 +466,18 @@ class _ProductDataState extends State<ProductData> {
     );
   }
 
-  void _editBox(Map<String, dynamic> productData) async {
-    Map<String, dynamic> editedBox = Map<String, dynamic>.from(productData);
-    editedBox['product_id'] = int.tryParse(editedBox['product_id'].toString());
-    editedBox.remove("created_at");
-    editedBox.remove("updated_at");
+  void _editPoolItem(Map<String, dynamic> itemData) async {
+    Map<String, dynamic> editedItem = Map<String, dynamic>.from(itemData);
+    editedItem['product_id'] =
+        int.tryParse(editedItem['product_id'].toString());
+    editedItem['drawn_num'] = int.tryParse(editedItem['drawn_num'].toString());
+    editedItem['probability'] =
+        double.tryParse(editedItem['probability'].toString());
+    editedItem['pool_id'] = int.tryParse(editedItem['pool_id'].toString());
+    editedItem['pool_item_id'] =
+        int.tryParse(editedItem['pool_item_id'].toString());
+    editedItem.remove("created_at");
+    editedItem.remove("updated_at");
     await showDialog(
       context: context,
       builder: (context) {
@@ -382,45 +492,72 @@ class _ProductDataState extends State<ProductData> {
                     children: [
                       TextField(
                         decoration: const InputDecoration(
+                          labelText: '实例ID',
+                        ),
+                        controller: TextEditingController(
+                            text: itemData['pool_item_id'].toString()),
+                        enabled: false,
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '池子ID',
+                        ),
+                        controller: TextEditingController(
+                            text: itemData['pool_id'].toString()),
+                        enabled: false,
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'APPID',
+                        ),
+                        controller: TextEditingController(
+                            text: itemData['app_id'].toString()),
+                        onChanged: (value) {
+                          editedItem['app_id'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
                           labelText: '商品ID',
                         ),
                         keyboardType: TextInputType.number,
                         controller: TextEditingController(
-                            text: productData['product_id'].toString()),
+                            text: itemData['product_id'].toString()),
                         onChanged: (value) {
-                          editedBox['product_id'] = int.tryParse(value);
+                          editedItem['product_id'] = int.tryParse(value);
                         },
                       ),
                       TextField(
                         decoration: const InputDecoration(
-                          labelText: '商品名称',
+                          labelText: '商品等级',
+                        ),
+                        controller: TextEditingController(
+                            text: itemData['product_level'].toString()),
+                        onChanged: (value) {
+                          editedItem['product_level'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '概率',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        controller: TextEditingController(
+                            text: itemData['probability'].toString()),
+                        onChanged: (value) {
+                          editedItem['probability'] = double.tryParse(value);
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Drawn Num',
                         ),
                         keyboardType: TextInputType.number,
                         controller: TextEditingController(
-                            text: productData['product_name'].toString()),
+                            text: itemData['drawn_num'].toString()),
                         onChanged: (value) {
-                          editedBox['product_name'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '封面URL',
-                        ),
-                        keyboardType: TextInputType.number,
-                        controller: TextEditingController(
-                            text: productData['product_image_url'].toString()),
-                        onChanged: (value) {
-                          editedBox['product_image_url'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '是否现货',
-                        ),
-                        controller: TextEditingController(
-                            text: productData['in_stock']),
-                        onChanged: (value) {
-                          editedBox['in_stock'] = value.toString();
+                          editedItem['drawn_num'] = int.tryParse(value);
                         },
                       ),
                       TextField(
@@ -428,19 +565,9 @@ class _ProductDataState extends State<ProductData> {
                           labelText: '备注',
                         ),
                         controller:
-                            TextEditingController(text: productData['notes']),
+                            TextEditingController(text: itemData['notes']),
                         onChanged: (value) {
-                          editedBox['notes'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '发售时间',
-                        ),
-                        controller: TextEditingController(
-                            text: productData['release_date']),
-                        onChanged: (value) {
-                          editedBox['release_date'] = value.toString();
+                          editedItem['notes'] = value.toString();
                         },
                       ),
                     ],
@@ -465,8 +592,8 @@ class _ProductDataState extends State<ProductData> {
                       'Content-Type': 'application/json',
                     },
                   );
-                  await _dio.post(_editProductUrl,
-                      data: editedBox, options: options);
+                  await _dio.post(_updatePoolItemUrl,
+                      data: editedItem, options: options);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -495,6 +622,25 @@ class _ProductDataState extends State<ProductData> {
                   SizedBox(
                     width: 200,
                     child: TextField(
+                      controller: _appIdController,
+                      decoration: const InputDecoration(
+                        hintText: '输入APPID',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 80,
+                    child: ElevatedButton(
+                      onPressed: _selectAppId,
+                      child: const Text('选择APPID'),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  SizedBox(
+                    width: 200,
+                    child: TextField(
                       controller: _searchController,
                       decoration: const InputDecoration(
                         hintText: '输入查找内容',
@@ -512,16 +658,12 @@ class _ProductDataState extends State<ProductData> {
                     },
                     items: <String>[
                       '商品ID',
-                      '商品名称',
                       '商品等级',
                     ].map<DropdownMenuItem<String>>((String value) {
                       late String key;
                       switch (value) {
                         case '商品ID':
                           key = 'product_id';
-                          break;
-                        case '商品名称':
-                          key = 'product_name';
                           break;
                         case '商品等级':
                           key = 'product_level';
@@ -537,7 +679,7 @@ class _ProductDataState extends State<ProductData> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _searchBoxes,
+                      onPressed: _searchItems,
                       child: const Text('查找'),
                     ),
                   ),
@@ -545,7 +687,7 @@ class _ProductDataState extends State<ProductData> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _deleteBoxes,
+                      onPressed: _deleteItems,
                       child: const Text('删除'),
                     ),
                   ),
@@ -553,7 +695,7 @@ class _ProductDataState extends State<ProductData> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _addBox,
+                      onPressed: _additem,
                       child: const Text('添加'),
                     ),
                   ),
@@ -574,11 +716,11 @@ class _ProductDataState extends State<ProductData> {
                               child: CustomDataTable(
                                   columns: _attributes,
                                   columnNames: _columns,
-                                  selectedItemIds: _selectedProductIds,
+                                  selectedItemIds: _selectedPoolItemIds,
                                   hasDetailButton: false,
                                   currentPageData: _currentPageData,
                                   imageColumnIndex: _imageColumnIndex,
-                                  editData: _editBox))),
+                                  editData: _editPoolItem))),
                       PaginationControl(
                           currentPage: _currentPage,
                           totalItems: _searchResult.length,

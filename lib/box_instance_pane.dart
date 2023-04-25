@@ -27,12 +27,12 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
   //表格参数
   final List<String> _columns = [
     'select',
-    'auto_id'
-        'app_id',
+    'auto_id',
+    'app_id',
     'box_id',
     'box_number',
-    'left_number',
-    'total_number',
+    'left_num',
+    'total_num',
     'img_url',
     'edit',
     'created_at',
@@ -58,7 +58,7 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
   final bool _hasDetailButton = false;
 
   //分页参数
-  late int _pageSize = 10;
+  final int _pageSize = 10;
   late int _currentPage = 0;
   late List<Map<String, dynamic>> _searchResult = [];
 
@@ -100,7 +100,7 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
           RegExp(r'(\w+)\s*:\s*([^,}\]]+)'),
           (match) =>
               '"${match[1]}":"${match[2]?.replaceAll(RegExp(r"'"), "\'")}"');
-
+      print(responseBody);
       List<dynamic> responseList = jsonDecode(responseBody);
       List<Map<String, dynamic>> productInstanceData =
           responseList.map<Map<String, dynamic>>((item) {
@@ -109,8 +109,8 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
           "app_id": item["app_id"] ?? "",
           "box_id": item["box_id"] ?? "",
           "box_number": item["box_number"] ?? "",
-          "left_number": item["left_number"] ?? "",
-          "total_number": item["total_number"] ?? "",
+          "left_num": item["left_num"] ?? "",
+          "total_num": item["total_num"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
                   .replaceAll("+08:00", " ") ??
@@ -202,7 +202,7 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
   }
 
   //增删查改相关函数
-  void _searchBoxes() {
+  void _searchItems() {
     String keyword = _searchController.text.trim();
     _currentPage = 0;
     if (keyword.isEmpty) {
@@ -286,10 +286,10 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
         int.tryParse(editedConfigItem['box_id'].toString());
     editedConfigItem['box_number'] =
         int.tryParse(editedConfigItem['box_number'].toString());
-    editedConfigItem['total_number'] =
-        int.tryParse(editedConfigItem['total_number'].toString());
-    editedConfigItem['left_number'] =
-        int.tryParse(editedConfigItem['left_number'].toString());
+    editedConfigItem['total_num'] =
+        int.tryParse(editedConfigItem['total_num'].toString());
+    editedConfigItem['left_num'] =
+        int.tryParse(editedConfigItem['left_num'].toString());
     editedConfigItem.remove("created_at");
     editedConfigItem.remove("updated_at");
     await showDialog(
@@ -348,9 +348,9 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: configItem['total_number'].toString()),
+                        text: configItem['total_num'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['total_number'] = int.tryParse(value);
+                      editedConfigItem['total_num'] = int.tryParse(value);
                     },
                   ),
                   TextField(
@@ -359,9 +359,9 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: configItem['left_number'].toString()),
+                        text: configItem['left_num'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['left_number'] = int.tryParse(value);
+                      editedConfigItem['left_num'] = int.tryParse(value);
                     },
                   ),
                 ],
@@ -533,7 +533,7 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
                             SizedBox(
                               width: 80,
                               child: ElevatedButton(
-                                onPressed: _searchBoxes,
+                                onPressed: _searchItems,
                                 child: const Text('查找'),
                               ),
                             ),

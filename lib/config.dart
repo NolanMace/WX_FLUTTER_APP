@@ -1,6 +1,6 @@
 // lib/config.dart
 class AppConfig {
-  static const String iP = '192.168.1.106';
+  static const String iP = '192.168.117.126';
   //管理员登录
   static const String loginUrl = 'http://$iP:8080/admin/login';
 
@@ -55,8 +55,38 @@ class AppConfig {
       'http://$iP:8080/admin/DeleteBoxItems';
   static const String updateBoxItemUrl = 'http://$iP:8080/admin/UpdateBoxItem';
 
+//池子请求
+  static const String getPoolUrl = 'http://$iP:8080/admin/GetPool';
+  static const String getAllPoolsUrl = 'http://$iP:8080/admin/GetAllPools';
+  static const String deletePoolUrl = 'http://$iP:8080/admin/DeletePools';
+  static const String updatePoolUrl = 'http://$iP:8080/admin/UpdatePool';
+  static const String addPoolUrl = 'http://$iP:8080/admin/CreatePool';
+  static const String getAdminDisplayPool =
+      'http://$iP:8080/admin/GetPoolsDisplayByPoolId';
+  static const String addDisplayPoolUrl =
+      'http://$iP:8080/admin/CreatePoolDisplay';
+  static const String deleteDisplayPoolUrl =
+      'http://$iP:8080/admin/DeletePoolsDisplayByIds';
+
+  //池子商品配置请求
+  static const String addPoolItemUrl = 'http://$iP:8080/admin/CreatePoolItem';
+  static const String deletePoolItemUrl =
+      'http://$iP:8080/admin/DeletePoolItemsByIds';
+  static const String updatePoolItemUrl =
+      'http://$iP:8080/admin/UpdatePoolItem';
+  static const String getPoolItemsByPoolIdUrl =
+      'http://$iP:8080/admin/GetPoolItemsByPoolId';
+
   //发货订单请求
   static const String getAdminShipmentOrderResponses =
       'http://$iP:8080/admin/GetAdminShipmentOrderResponses';
   static const String toShipUrl = 'http://$iP:8080/admin/AdminToShip';
+
+  //消费记录
+  static const String getBoxLotteryRecordAdmin =
+      'http://$iP:8080/admin/GetBoxLotteryRecordAdmin';
+  static const String getPoolLotteryRecordAdmin =
+      'http://$iP:8080/admin/GetPoolLotteryRecordAdmin';
+  static const String getDqLotteryRecordAdmin =
+      'http://$iP:8080/admin/GetDqLotteryRecordAdmin';
 }

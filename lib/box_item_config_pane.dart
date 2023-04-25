@@ -761,16 +761,18 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                           ),
                           const SizedBox(width: 10),
                           SizedBox(
-                            width: 100,
+                            width: 120,
                             height: 30,
                             child: ElevatedButton(
                               onPressed: () => widget.toBoxInstance!(widget.id),
-                              child: const Text('查看箱子实例'),
+                              child: const Text(
+                                '查看箱子实例',
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
                           SizedBox(
-                            width: 100,
+                            width: 120,
                             height: 30,
                             child: ElevatedButton(
                               onPressed: () =>

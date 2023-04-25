@@ -4,8 +4,8 @@ import 'package:mis/config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pagination_control.dart';
 
-class BoxDataPane extends StatefulWidget {
-  const BoxDataPane({
+class PoolDataPane extends StatefulWidget {
+  const PoolDataPane({
     Key? key,
     this.toDetail,
     this.toDisplay,
@@ -15,21 +15,21 @@ class BoxDataPane extends StatefulWidget {
   final Function(int)? toDisplay;
 
   @override
-  State<BoxDataPane> createState() => _BoxDataPaneState();
+  State<PoolDataPane> createState() => _PoolDataPaneState();
 }
 
-class _BoxDataPaneState extends State<BoxDataPane> {
+class _PoolDataPaneState extends State<PoolDataPane> {
   final Dio _dio = Dio();
   //网络请求相关参数
-  final _getAllBoxesUrl = AppConfig.getAllBoxesUrl;
-  final _deleteBoxUrl = AppConfig.deleteBoxUrl;
-  final _addBoxUrl = AppConfig.addBoxUrl;
-  final _editBoxUrl = AppConfig.updateBoxUrl;
-  late List<dynamic> _boxes;
+  final _getAllPoolsUrl = AppConfig.getAllPoolsUrl;
+  final _deletePoolUrl = AppConfig.deletePoolUrl;
+  final _addPoolUrl = AppConfig.addPoolUrl;
+  final _updatePoolUrl = AppConfig.updatePoolUrl;
+  late List<dynamic> _pools;
 
 //表格相关参数
   late List<DataColumn> _columns;
-  late List<int> _selectedBoxIds;
+  late List<int> _selectedpoolIds;
   late List<dynamic> _currentPageData;
 
   //分页相关参数
@@ -46,7 +46,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
   //输入框控制器
   final _searchController = TextEditingController();
 
-  late String _dropdownValue = "box_id"; //下拉选择默认值
+  late String _dropdownValue = "pool_id"; //下拉选择默认值
 
   //销毁控制器
   @override
@@ -76,18 +76,13 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       const DataColumn(
           label: SizedBox(
         width: 60,
-        child: Text("箱子ID", style: TextStyle(fontSize: 14)),
-      )),
-      const DataColumn(
-          label: SizedBox(
-        width: 60,
-        child: Text("容量", style: TextStyle(fontSize: 14)),
+        child: Text("池子ID", style: TextStyle(fontSize: 14)),
       )),
       const DataColumn(
           label: SizedBox(
         width: 100,
         child: Text(
-          "箱子名称",
+          "池子名称",
           style: TextStyle(fontSize: 14),
           overflow: TextOverflow.ellipsis,
         ),
@@ -95,12 +90,12 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       const DataColumn(
           label: SizedBox(
         width: 70,
-        child: Text("箱子等级", style: TextStyle(fontSize: 14)),
+        child: Text("池子等级", style: TextStyle(fontSize: 14)),
       )),
       const DataColumn(
           label: SizedBox(
         width: 70,
-        child: Text("箱子类型", style: TextStyle(fontSize: 14)),
+        child: Text("池子类型", style: TextStyle(fontSize: 14)),
       )),
       const DataColumn(
           label: SizedBox(
@@ -143,7 +138,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
         child: Text("更新时间", style: TextStyle(fontSize: 14)),
       )),
     ];
-    _selectedBoxIds = [];
+    _selectedpoolIds = [];
     fetchData();
   }
 
@@ -162,7 +157,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
           'Content-Type': 'application/json',
         },
       );
-      Response response = await _dio.get(_getAllBoxesUrl, options: options);
+      Response response = await _dio.get(_getAllPoolsUrl, options: options);
       print(response.data);
       if (response.data == null) {
         setState(() {
@@ -171,11 +166,11 @@ class _BoxDataPaneState extends State<BoxDataPane> {
         return;
       }
       setState(() {
-        _selectedBoxIds.clear();
+        _selectedpoolIds.clear();
         _isAllSelected = false;
         _currentPage = 0;
-        _boxes = response.data;
-        _searchResult = _boxes;
+        _pools = response.data;
+        _searchResult = _pools;
         _currentPageData = _searchResult
             .skip(_currentPage * _pageSize)
             .take(_pageSize)
@@ -219,28 +214,28 @@ class _BoxDataPaneState extends State<BoxDataPane> {
   void _selectAll(bool? value) {
     setState(() {
       if (value == true) {
-        _selectedBoxIds.clear();
-        _selectedBoxIds = _searchResult.map((item) {
-          int id = item["box_id"];
+        _selectedpoolIds.clear();
+        _selectedpoolIds = _searchResult.map((item) {
+          int id = item["pool_id"];
           return id;
         }).toList();
         _isAllSelected = false;
       } else {
-        _selectedBoxIds.clear();
+        _selectedpoolIds.clear();
         _isAllSelected = true;
       }
     });
   }
 
   //增删查改相关函数
-  void _searchBoxes() {
+  void _searchpools() {
     String keyword = _searchController.text.trim();
     _currentPage = 0;
     if (keyword.isEmpty) {
       fetchData();
     } else {
       setState(() {
-        _searchResult = _boxes.where((user) {
+        _searchResult = _pools.where((user) {
           return user[_dropdownValue].toString().contains(keyword);
         }).toList(); // 根据关键字和选择的属性筛选用户
         _loadData();
@@ -248,23 +243,22 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     }
   }
 
-  void _addBox() async {
-    Map<String, dynamic>? newBox;
+  void _addpool() async {
+    Map<String, dynamic>? newpool;
     await showDialog(
       context: context,
       builder: (context) {
-        newBox = {
-          'box_id': null,
-          'capacity': null,
-          'box_name': null,
-          'box_level': null,
-          'box_type': null,
+        newpool = {
+          'pool_id': null,
+          'pool_name': null,
+          'pool_level': null,
+          'pool_type': null,
           'image_url': null,
           'notes': null,
-          'box_price': null,
+          'pool_price': null,
         };
         return AlertDialog(
-          title: const Text('添加箱子'),
+          title: const Text('添加池子'),
           content: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 300),
               child: SingleChildScrollView(
@@ -274,45 +268,36 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     children: [
                       TextField(
                         decoration: const InputDecoration(
-                          labelText: '箱子ID',
+                          labelText: '池子ID',
                         ),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
-                          newBox?['box_id'] = int.tryParse(value);
+                          newpool?['pool_id'] = int.tryParse(value);
                         },
                       ),
                       TextField(
                         decoration: const InputDecoration(
-                          labelText: '容量',
+                          labelText: '池子名称',
+                        ),
+                        onChanged: (value) {
+                          newpool?['pool_name'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '池子等级',
                         ),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
-                          newBox?['capacity'] = int.tryParse(value);
+                          newpool?['pool_level'] = value.toString();
                         },
                       ),
                       TextField(
                         decoration: const InputDecoration(
-                          labelText: '箱子名称',
+                          labelText: '池子类型',
                         ),
                         onChanged: (value) {
-                          newBox?['box_name'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '箱子等级',
-                        ),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          newBox?['box_level'] = value.toString();
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '箱子类型',
-                        ),
-                        onChanged: (value) {
-                          newBox?['box_type'] = value.toString();
+                          newpool?['pool_type'] = value.toString();
                         },
                       ),
                       TextField(
@@ -320,7 +305,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                           labelText: '封面URL',
                         ),
                         onChanged: (value) {
-                          newBox?['image_url'] = value.toString();
+                          newpool?['image_url'] = value.toString();
                         },
                       ),
                       TextField(
@@ -328,7 +313,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                           labelText: '备注',
                         ),
                         onChanged: (value) {
-                          newBox?['notes'] = value.toString();
+                          newpool?['notes'] = value.toString();
                         },
                       ),
                       TextField(
@@ -338,7 +323,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
                         onChanged: (value) {
-                          newBox?['box_price'] = double.tryParse(value);
+                          newpool?['pool_price'] = double.tryParse(value);
                         },
                       ),
                     ],
@@ -363,7 +348,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                       'Content-Type': 'application/json',
                     },
                   );
-                  await _dio.post(_addBoxUrl, options: options, data: newBox);
+                  await _dio.post(_addPoolUrl, options: options, data: newpool);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -390,8 +375,8 @@ class _BoxDataPaneState extends State<BoxDataPane> {
           'Content-Type': 'application/json',
         },
       );
-      await _dio.delete(_deleteBoxUrl, options: options, data: {
-        "box_id": _selectedBoxIds,
+      await _dio.delete(_deletePoolUrl, options: options, data: {
+        "pool_ids": _selectedpoolIds,
       });
       fetchData();
     } catch (error) {
@@ -402,8 +387,8 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     }
   }
 
-  void _deleteBoxes() {
-    if (_selectedBoxIds.isEmpty) {
+  void _deletepools() {
+    if (_selectedpoolIds.isEmpty) {
       return;
     }
     showDialog(
@@ -411,7 +396,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       builder: (context) {
         return AlertDialog(
           title: const Text('提示'),
-          content: const Text('确定删除所选箱子吗？'),
+          content: const Text('确定删除所选池子吗？'),
           actions: [
             TextButton(
               onPressed: () {
@@ -432,22 +417,21 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     );
   }
 
-  void _editBox(boxData) async {
-    Map<String, dynamic> editedBox = {
-      'box_id': boxData['box_id'],
-      'capacity': boxData['capacity'],
-      'box_name': boxData['box_name'],
-      'box_level': boxData['box_level'],
-      'box_type': boxData['box_type'],
-      'image_url': boxData['image_url'],
-      'notes': boxData['notes'],
-      'box_price': boxData['box_price'],
+  void _editpool(poolData) async {
+    Map<String, dynamic> editedpool = {
+      'pool_id': poolData['pool_id'],
+      'pool_name': poolData['pool_name'],
+      'pool_level': poolData['pool_level'],
+      'pool_type': poolData['pool_type'],
+      'image_url': poolData['image_url'],
+      'notes': poolData['notes'],
+      'pool_price': poolData['pool_price'],
     };
     await showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('编辑箱子信息'),
+          title: const Text('编辑池子信息'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 300),
             child: SingleChildScrollView(
@@ -457,53 +441,42 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                 children: [
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '箱子ID',
+                      labelText: '池子ID',
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: boxData['box_id'].toString()),
+                        text: poolData['pool_id'].toString()),
                     enabled: false,
                   ),
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '容量',
+                      labelText: '池子名称',
+                    ),
+                    controller:
+                        TextEditingController(text: poolData['pool_name']),
+                    onChanged: (value) {
+                      editedpool['pool_name'] = value;
+                    },
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '池子等级',
                     ),
                     keyboardType: TextInputType.number,
                     controller: TextEditingController(
-                        text: boxData['capacity'].toString()),
+                        text: poolData['pool_level'].toString()),
                     onChanged: (value) {
-                      editedBox['capacity'] = int.tryParse(value);
+                      editedpool['pool_level'] = value.toString();
                     },
                   ),
                   TextField(
                     decoration: const InputDecoration(
-                      labelText: '箱子名称',
+                      labelText: '池子类型',
                     ),
                     controller:
-                        TextEditingController(text: boxData['box_name']),
+                        TextEditingController(text: poolData['pool_type']),
                     onChanged: (value) {
-                      editedBox['box_name'] = value;
-                    },
-                  ),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: '箱子等级',
-                    ),
-                    keyboardType: TextInputType.number,
-                    controller: TextEditingController(
-                        text: boxData['box_level'].toString()),
-                    onChanged: (value) {
-                      editedBox['box_level'] = value.toString();
-                    },
-                  ),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: '箱子类型',
-                    ),
-                    controller:
-                        TextEditingController(text: boxData['box_type']),
-                    onChanged: (value) {
-                      editedBox['box_type'] = value.toString();
+                      editedpool['pool_type'] = value.toString();
                     },
                   ),
                   TextField(
@@ -511,18 +484,18 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                       labelText: '封面URL',
                     ),
                     controller:
-                        TextEditingController(text: boxData['image_url']),
+                        TextEditingController(text: poolData['image_url']),
                     onChanged: (value) {
-                      editedBox['image_url'] = value.toString();
+                      editedpool['image_url'] = value.toString();
                     },
                   ),
                   TextField(
                     decoration: const InputDecoration(
                       labelText: '备注',
                     ),
-                    controller: TextEditingController(text: boxData['notes']),
+                    controller: TextEditingController(text: poolData['notes']),
                     onChanged: (value) {
-                      editedBox['notes'] = value;
+                      editedpool['notes'] = value;
                     },
                   ),
                   TextField(
@@ -532,9 +505,9 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                     controller: TextEditingController(
-                        text: boxData['box_price'].toString()),
+                        text: poolData['pool_price'].toString()),
                     onChanged: (value) {
-                      editedBox['box_price'] = double.tryParse(value);
+                      editedpool['pool_price'] = double.tryParse(value);
                     },
                   ),
                 ],
@@ -561,8 +534,8 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                       'Content-Type': 'application/json',
                     },
                   );
-                  await _dio.post(_editBoxUrl,
-                      options: options, data: editedBox);
+                  await _dio.post(_updatePoolUrl,
+                      options: options, data: editedpool);
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
@@ -607,20 +580,20 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                       });
                     },
                     items: <String>[
-                      '箱子ID',
-                      '箱子名称',
-                      '箱子类型',
+                      '池子ID',
+                      '池子名称',
+                      '池子类型',
                     ].map<DropdownMenuItem<String>>((String value) {
                       late String key;
                       switch (value) {
-                        case '箱子ID':
-                          key = 'box_id';
+                        case '池子ID':
+                          key = 'pool_id';
                           break;
-                        case '箱子名称':
-                          key = 'box_name';
+                        case '池子名称':
+                          key = 'pool_name';
                           break;
-                        case '箱子类型':
-                          key = 'box_type';
+                        case '池子类型':
+                          key = 'pool_type';
                           break;
                       }
                       return DropdownMenuItem<String>(
@@ -633,7 +606,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _searchBoxes,
+                      onPressed: _searchpools,
                       child: const Text('查找'),
                     ),
                   ),
@@ -641,7 +614,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _deleteBoxes,
+                      onPressed: _deletepools,
                       child: const Text('删除'),
                     ),
                   ),
@@ -649,7 +622,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                   SizedBox(
                     width: 80,
                     child: ElevatedButton(
-                      onPressed: _addBox,
+                      onPressed: _addpool,
                       child: const Text('添加'),
                     ),
                   ),
@@ -673,15 +646,15 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                     return DataRow(cells: [
                                       DataCell(
                                         Checkbox(
-                                            value: _selectedBoxIds
-                                                .contains(item['box_id']),
+                                            value: _selectedpoolIds
+                                                .contains(item['pool_id']),
                                             onChanged: (bool? value) {
                                               setState(() {
-                                                int? id = item['box_id'];
+                                                int? id = item['pool_id'];
                                                 if (value!) {
-                                                  _selectedBoxIds.add(id!);
+                                                  _selectedpoolIds.add(id!);
                                                 } else {
-                                                  _selectedBoxIds.remove(id);
+                                                  _selectedpoolIds.remove(id);
                                                 }
                                               });
                                             }),
@@ -690,20 +663,9 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                         SizedBox(
                                           width: 50,
                                           child: Text(
-                                            item['box_id'].toString(),
+                                            item['pool_id'].toString(),
                                             style:
                                                 const TextStyle(fontSize: 14),
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        SizedBox(
-                                          width: 60,
-                                          child: Text(
-                                            item['capacity'].toString(),
-                                            style:
-                                                const TextStyle(fontSize: 14),
-                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ),
@@ -711,7 +673,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                         SizedBox(
                                           width: 100,
                                           child: Text(
-                                            item['box_name'],
+                                            item['pool_name'],
                                             style:
                                                 const TextStyle(fontSize: 14),
                                             maxLines: 3,
@@ -723,7 +685,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                         SizedBox(
                                           width: 50,
                                           child: Text(
-                                            item['box_level'],
+                                            item['pool_level'],
                                             style:
                                                 const TextStyle(fontSize: 14),
                                             overflow: TextOverflow.ellipsis,
@@ -734,7 +696,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                         SizedBox(
                                           width: 50,
                                           child: Text(
-                                            item['box_type'],
+                                            item['pool_type'],
                                             style:
                                                 const TextStyle(fontSize: 14),
                                           ),
@@ -767,7 +729,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                         SizedBox(
                                           width: 60,
                                           child: Text(
-                                            item['box_price'].toString(),
+                                            item['pool_price'].toString(),
                                             style:
                                                 const TextStyle(fontSize: 14),
                                           ),
@@ -778,7 +740,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                           width: 100,
                                           child: ElevatedButton(
                                             onPressed: () {
-                                              widget.toDetail!(item['box_id']);
+                                              widget.toDetail!(item['pool_id']);
                                             },
                                             child: const Text('配置详情',
                                                 style: TextStyle(
@@ -792,7 +754,8 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                           width: 100,
                                           child: ElevatedButton(
                                             onPressed: () {
-                                              widget.toDisplay!(item['box_id']);
+                                              widget
+                                                  .toDisplay!(item['pool_id']);
                                             },
                                             child: const Text('上架详情',
                                                 style: TextStyle(
@@ -806,7 +769,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                           width: 60,
                                           child: ElevatedButton(
                                             onPressed: () {
-                                              _editBox(item);
+                                              _editpool(item);
                                             },
                                             child: const Text('编辑',
                                                 style: TextStyle(

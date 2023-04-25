@@ -7,11 +7,11 @@ class AfterLogin extends StatefulWidget {
   const AfterLogin({Key? key}) : super(key: key);
 
   @override
-  _AfterLoginState createState() => _AfterLoginState();
+  State<AfterLogin> createState() => _AfterLoginState();
 }
 
 class _AfterLoginState extends State<AfterLogin> {
-  String _selectedSubCategory = "Subcategory 1";
+  String _selectedSubCategory = "用户管理";
 
   void _updateSelectedCategory(String subCategory) {
     setState(() {

@@ -11,39 +11,65 @@ class NavigationPane extends StatelessWidget {
     return ListView(
       children: [
         ExpansionTile(
-          title: const Text("Category 1"),
+          title: const Text("用户管理"),
           children: [
             ListTile(
-              title: const Text("Subcategory 1"),
+              title: const Text("用户管理"),
               onTap: () {
-                onSelectCategory("Subcategory 1");
+                onSelectCategory("用户管理");
               },
             ),
             ListTile(
-              title: const Text("Subcategory 2"),
+              title: const Text("发货管理"),
               onTap: () {
-                onSelectCategory("Subcategory 2");
+                onSelectCategory("发货管理");
               },
             ),
           ],
         ),
         ExpansionTile(
-          title: const Text("Category 2"),
+          title: const Text("商品管理"),
           children: [
             ListTile(
-              title: const Text("Subcategory 1"),
+              title: const Text("商品管理"),
               onTap: () {
-                onSelectCategory("Subcategory 3");
+                onSelectCategory("商品管理");
               },
             ),
             ListTile(
-              title: const Text("Subcategory 2"),
+              title: const Text("箱子管理"),
               onTap: () {
-                onSelectCategory("Subcategory 4");
+                onSelectCategory("箱子管理");
+              },
+            ),
+            ListTile(
+              title: const Text("池子管理"),
+              onTap: () {
+                onSelectCategory("池子管理");
               },
             ),
           ],
         ),
+        ExpansionTile(title: const Text("消费记录"), children: [
+          ListTile(
+            title: const Text("一番赏记录"),
+            onTap: () {
+              onSelectCategory("一番赏记录");
+            },
+          ),
+          ListTile(
+            title: const Text("打拳记录"),
+            onTap: () {
+              onSelectCategory("打拳记录");
+            },
+          ),
+          ListTile(
+            title: const Text("无限赏记录"),
+            onTap: () {
+              onSelectCategory("无限赏记录");
+            },
+          ),
+        ]),
       ],
     );
   }

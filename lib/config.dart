@@ -1,6 +1,6 @@
 // lib/config.dart
 class AppConfig {
-  static const String iP = '192.168.117.126';
+  static const String iP = 'localhost';
   //管理员登录
   static const String loginUrl = 'http://$iP:8080/admin/login';
 

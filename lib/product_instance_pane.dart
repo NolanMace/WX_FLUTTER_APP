@@ -35,6 +35,8 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
     'product_level',
     'img_url',
     'is_drawn',
+    'drawn_num',
+    'send_num',
     'notes',
     'edit',
     'created_at',
@@ -50,6 +52,8 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
     '商品等级',
     '图片',
     '是否已抽取',
+    'Drawn Num',
+    'Send Num',
     '备注',
     '编辑',
     '创建时间',
@@ -116,6 +120,8 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
           "box_number": item["box_number"] ?? "",
           "product_level": item["product_level"] ?? "",
           "is_drawn": item["is_drawn"] ?? "",
+          "drawn_num": item["drawn_num"] ?? "",
+          "send_num": item["send_num"] ?? "",
           "notes": item["notes"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
@@ -295,6 +301,10 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
         int.tryParse(editedConfigItem['box_number'].toString());
     editedConfigItem['is_drawn'] =
         int.tryParse(editedConfigItem['is_drawn'].toString());
+    editedConfigItem['drawn_num'] =
+        int.tryParse(editedConfigItem['drawn_num'].toString());
+    editedConfigItem['send_num'] =
+        int.tryParse(editedConfigItem['send_num'].toString());
     editedConfigItem.remove("created_at");
     editedConfigItem.remove("updated_at");
     await showDialog(
@@ -343,7 +353,7 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                     controller: TextEditingController(
                         text: configItem['product_id'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['product_id'] = int.parse(value);
+                      editedConfigItem['product_id'] = int.tryParse(value);
                     },
                   ),
                   TextField(
@@ -354,7 +364,7 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                     controller: TextEditingController(
                         text: configItem['box_number'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['box_number'] = int.parse(value);
+                      editedConfigItem['box_number'] = int.tryParse(value);
                     },
                   ),
                   TextField(
@@ -374,7 +384,29 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                     controller: TextEditingController(
                         text: configItem['is_drawn'].toString()),
                     onChanged: (value) {
-                      editedConfigItem['is_drawn'] = int.parse(value);
+                      editedConfigItem['is_drawn'] = int.tryParse(value);
+                    },
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'DrawnNum',
+                    ),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(
+                        text: configItem['drawn_num'].toString()),
+                    onChanged: (value) {
+                      editedConfigItem['drawn_num'] = int.tryParse(value);
+                    },
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'SendNum',
+                    ),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(
+                        text: configItem['send_num'].toString()),
+                    onChanged: (value) {
+                      editedConfigItem['send_num'] = int.tryParse(value);
                     },
                   ),
                   TextField(

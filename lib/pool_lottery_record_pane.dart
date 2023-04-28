@@ -58,7 +58,6 @@ class _PoolLotteryRecordPaneState extends State<PoolLotteryRecordPane> {
       );
       Response response =
           await _dio.get(_getPoolLotteryRecordAdmin, options: options);
-      print(response.data);
       if (response.data == null) {
         setState(() {
           _isLoading = false;
@@ -128,8 +127,7 @@ class _PoolLotteryRecordPaneState extends State<PoolLotteryRecordPane> {
         _selectedItemIds.clear();
         _searchResult = _appIdResult.where((user) {
           String value = user[_dropdownValue].toString();
-          RegExp regExp = RegExp(r"\b" + keyword + r"\b");
-          return regExp.hasMatch(value);
+          return value == keyword;
         }).toList(); // 根据关键字和选择的属性筛选用户
         _loadData();
       });

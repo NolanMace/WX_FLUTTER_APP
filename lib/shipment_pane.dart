@@ -102,13 +102,13 @@ class _ShipmentPaneState extends State<ShipmentPane> {
     try {
       Response response =
           await _dio.get(_getAdminShipmentOrderResponses, options: options);
-      print(response.data.runtimeType);
       if (response.data == null) {
         setState(() {
           _isLoading = false;
         });
         return;
       }
+      print(response.data);
       List<dynamic> rawData = response.data;
       List<dynamic> _rawShipmentOrders = [];
       for (var shipment in rawData) {

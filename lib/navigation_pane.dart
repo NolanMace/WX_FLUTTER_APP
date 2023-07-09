@@ -70,6 +70,32 @@ class NavigationPane extends StatelessWidget {
             },
           ),
         ]),
+        ExpansionTile(title: const Text("小程序设置"), children: [
+          ListTile(
+            title: const Text("用户协议"),
+            onTap: () {
+              onSelectCategory("用户协议");
+            },
+          ),
+          ListTile(
+            title: const Text("首页弹窗"),
+            onTap: () {
+              onSelectCategory("首页弹窗");
+            },
+          ),
+          ListTile(
+            title: const Text("轮播图设置"),
+            onTap: () {
+              onSelectCategory("轮播图设置");
+            },
+          ),
+          ListTile(
+            title: const Text("优惠券设置"),
+            onTap: () {
+              onSelectCategory("优惠券设置");
+            },
+          ),
+        ]),
       ],
     );
   }

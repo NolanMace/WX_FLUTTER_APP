@@ -37,7 +37,6 @@ class _PoolItemDataState extends State<PoolItemData> {
     "APPID",
     "池子ID",
     "商品ID",
-    "图片",
     "商品等级",
     "概率",
     "DrawnNum",
@@ -52,7 +51,6 @@ class _PoolItemDataState extends State<PoolItemData> {
     'app_id',
     'pool_id',
     'product_id',
-    "product_image_url",
     'product_level',
     'probability',
     'drawn_num',
@@ -61,7 +59,7 @@ class _PoolItemDataState extends State<PoolItemData> {
     'created_at',
     'updated_at'
   ];
-  final int _imageColumnIndex = 5;
+  final int _imageColumnIndex = 10000;
   late List<DataColumn> _columns;
   late List<int> _selectedPoolItemIds;
   late List<dynamic> _currentPageData;
@@ -228,6 +226,15 @@ class _PoolItemDataState extends State<PoolItemData> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -722,11 +729,13 @@ class _PoolItemDataState extends State<PoolItemData> {
                                   imageColumnIndex: _imageColumnIndex,
                                   editData: _editPoolItem))),
                       PaginationControl(
-                          currentPage: _currentPage,
-                          totalItems: _searchResult.length,
-                          pageSize: _pageSize,
-                          onNextPage: _nextPage,
-                          onPrevPage: _prevPage)
+                        currentPage: _currentPage,
+                        totalItems: _searchResult.length,
+                        pageSize: _pageSize,
+                        onNextPage: _nextPage,
+                        onPrevPage: _prevPage,
+                        onJumpPage: _jumpToPage,
+                      )
                     ],
                   ),
                 ),

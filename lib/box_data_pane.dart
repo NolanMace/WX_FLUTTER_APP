@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mis/config.dart';
+import 'package:mis/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pagination_control.dart';
 
@@ -163,7 +164,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
         },
       );
       Response response = await _dio.get(_getAllBoxesUrl, options: options);
-      print(response.data);
+      debugPrint(response.data.toString());
       if (response.data == null) {
         setState(() {
           _isLoading = false;
@@ -183,7 +184,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
         _isLoading = false;
       });
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       setState(() {
         _isLoading = true;
       });
@@ -210,6 +211,15 @@ class _BoxDataPaneState extends State<BoxDataPane> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -315,14 +325,13 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                           newBox?['box_type'] = value.toString();
                         },
                       ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '封面URL',
-                        ),
-                        onChanged: (value) {
-                          newBox?['image_url'] = value.toString();
-                        },
+                      const Text(
+                        "image_url",
+                        style: TextStyle(fontSize: 12, color: Colors.black),
                       ),
+                      ImagePicker(callback: (file) {
+                        newBox?['image_url'] = file.toString();
+                      }),
                       TextField(
                         decoration: const InputDecoration(
                           labelText: '备注',
@@ -367,7 +376,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
-                  print('Error: $error');
+                  debugPrint('Error: $error');
                 }
               },
               child: const Text('添加'),
@@ -395,7 +404,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
       });
       fetchData();
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       setState(() {
         _isLoading = true;
       });
@@ -506,16 +515,14 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                       editedBox['box_type'] = value.toString();
                     },
                   ),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: '封面URL',
-                    ),
-                    controller:
-                        TextEditingController(text: boxData['image_url']),
-                    onChanged: (value) {
-                      editedBox['image_url'] = value.toString();
-                    },
+                  const Text(
+                    "image_url",
+                    style: TextStyle(fontSize: 12, color: Colors.black),
                   ),
+                  ImagePicker(
+                      callback: (fileUrl) => {
+                            editedBox['image_url'] = fileUrl,
+                          }),
                   TextField(
                     decoration: const InputDecoration(
                       labelText: '备注',
@@ -666,6 +673,7 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                             child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: DataTable(
+                                  columnSpacing: 8,
                                   columns: _columns,
                                   rows: List<DataRow>.generate(
                                       _currentPageData.length, (index) {
@@ -740,13 +748,13 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                           ),
                                         ),
                                       ),
-                                      const DataCell(
+                                      DataCell(
                                         SizedBox(
                                           width: 50,
                                           height: 50,
                                           child: Image(
-                                            image: AssetImage(
-                                                'assets/wuxianshang.jpg'),
+                                            image: NetworkImage(
+                                                item['image_url'].toString()),
                                             fit: BoxFit.cover,
                                           ),
                                         ),
@@ -833,11 +841,13 @@ class _BoxDataPaneState extends State<BoxDataPane> {
                                   }),
                                 ))),
                         PaginationControl(
-                            currentPage: _currentPage,
-                            totalItems: _searchResult.length,
-                            pageSize: _pageSize,
-                            onNextPage: _nextPage,
-                            onPrevPage: _prevPage)
+                          currentPage: _currentPage,
+                          totalItems: _searchResult.length,
+                          pageSize: _pageSize,
+                          onNextPage: _nextPage,
+                          onPrevPage: _prevPage,
+                          onJumpPage: _jumpToPage,
+                        )
                       ],
                     )),
               ),

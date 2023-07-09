@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mis/app_home_popup_pane.dart';
+import 'package:mis/coupon_display_pane.dart';
+import 'package:mis/user_agreements_pane.dart';
 import 'box_lottery_record_pane.dart';
+import 'coupon_pane.dart';
+import 'coupon_template_pane.dart';
 import 'dq_lottery_record_pane.dart';
 import 'pool_data_pane.dart';
 import 'box_display_pane.dart';
@@ -9,6 +14,7 @@ import 'pool_display_pane.dart';
 import 'pool_item_pane.dart';
 import 'pool_lottery_record_pane.dart';
 import 'product_data.dart';
+import 'swiper_data_pane.dart';
 import 'user_data_pane.dart';
 import 'box_data_pane.dart';
 import 'product_instance_pane.dart';
@@ -30,6 +36,7 @@ class _ContentPaneState extends State<ContentPane>
     with TickerProviderStateMixin {
   late TabController _tabController;
   late TabController _pooltabController;
+  late TabController _couponTabController;
 
   int _boxId = 0;
   int _poolId = 0;
@@ -82,18 +89,21 @@ class _ContentPaneState extends State<ContentPane>
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
     _pooltabController = TabController(length: 3, vsync: this);
+    _couponTabController = TabController(length: 3, vsync: this);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+    _pooltabController.dispose();
+    _couponTabController.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.subCategory == "用户管理") {
-      return UserDataPane();
+      return const UserDataPane();
     } else if (widget.subCategory == "发货管理") {
       return const ShipmentPane();
     } else if (widget.subCategory == "商品管理") {
@@ -191,6 +201,47 @@ class _ContentPaneState extends State<ContentPane>
       return const DqLotteryRecordPane();
     } else if (widget.subCategory == "无限赏记录") {
       return const PoolLotteryRecordPane();
+    } else if (widget.subCategory == "用户协议") {
+      return const UserAgreementsPane();
+    } else if (widget.subCategory == "首页弹窗") {
+      return const AppHomePopupPane();
+    } else if (widget.subCategory == "轮播图设置") {
+      return const AppSwiperData();
+    } else if (widget.subCategory == "优惠券设置") {
+      return Column(
+        children: [
+          TabBar(
+            controller: _couponTabController,
+            labelColor: Colors.blue, // 选中标签的颜色
+            unselectedLabelColor: Colors.grey,
+            tabs: const [
+              Tab(
+                text: "优惠券模板",
+              ),
+              Tab(
+                text: "优惠券组合",
+              ),
+              Tab(
+                text: "优惠券上架",
+              ),
+            ],
+            onTap: (index) {
+              setState(() {});
+            },
+          ),
+          Expanded(
+            child: TabBarView(
+              physics: const NeverScrollableScrollPhysics(),
+              controller: _couponTabController,
+              children: const [
+                CouponPane(),
+                CouponTemplate(),
+                CouponDisplay(),
+              ],
+            ),
+          ),
+        ],
+      );
     } else {
       return const Text("未知");
     }

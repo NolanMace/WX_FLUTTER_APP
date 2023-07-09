@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
+import 'image_picker.dart';
 import 'pagination_control.dart';
 
 class PoolDisplay extends StatefulWidget {
@@ -19,14 +20,17 @@ class _PoolDisplayState extends State<PoolDisplay> {
   final _getPoolUrl = AppConfig.getPoolUrl;
   final _deleteUrl = AppConfig.deleteDisplayPoolUrl;
   final _addUrl = AppConfig.addDisplayPoolUrl;
+  final _updateUrl = AppConfig.updatePoolsDisplayUrl;
+  final _updateShowNewLabelUrl = AppConfig.updatePoolsDisplayShowNewLabel;
   late List<dynamic> _displayItems;
-  var _poolInfo = {
+  final _poolInfo = {
     "pool_id": 0,
     "pool_type": "",
     "pool_name": "",
     "image_url": "",
     "pool_price": 0,
   };
+  bool _gotPoolInfo = false;
 
   //表格相关参数
   late List<DataColumn> _columns;
@@ -91,6 +95,7 @@ class _PoolDisplayState extends State<PoolDisplay> {
         _poolInfo["pool_name"] = poolInfoResponse.data["pool_name"];
         _poolInfo["image_url"] = poolInfoResponse.data["image_url"];
         _poolInfo["pool_price"] = poolInfoResponse.data["pool_price"];
+        _gotPoolInfo = true;
         _selectedItemIds.clear();
         _isAllSelected = false;
         _currentPage = 0;
@@ -258,6 +263,21 @@ class _PoolDisplayState extends State<PoolDisplay> {
                             newItem?['app_id'] = value;
                           },
                         ),
+                        const Text(
+                          '分享图片',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        ImagePicker(callback: (value) {
+                          newItem?['share_img'] = value;
+                        }),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '分享标题',
+                          ),
+                          onChanged: (value) {
+                            newItem?['share_title'] = value;
+                          },
+                        ),
                       ],
                     ))),
             actions: [
@@ -297,6 +317,138 @@ class _PoolDisplayState extends State<PoolDisplay> {
         });
   }
 
+  void _setNewLabel(item, bool value) async {
+    Map<String, dynamic>? newItem = {
+      "auto_id": item["auto_id"],
+      "pool_id": item["pool_id"],
+      "app_id": item["app_id"],
+      "pool_type": item["pool_type"],
+      "lottery_count": item["lottery_count"],
+      "show_new_label": value,
+    };
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      await _dio.post(_updateShowNewLabelUrl, options: options, data: newItem);
+      fetchData();
+    } catch (e) {
+      print('Error: $e');
+      setState(() {
+        _isLoading = true;
+      });
+    }
+  }
+
+  void _postEditRequest(item) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      await _dio.post(_updateUrl, options: options, data: item);
+      fetchData();
+    } catch (e) {
+      debugPrint('Error: $e');
+      setState(() {
+        _isLoading = true;
+      });
+    }
+  }
+
+  void _editItem(item) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('编辑配置'),
+            content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 300),
+                child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '池子ID',
+                          ),
+                          keyboardType: TextInputType.number,
+                          controller: TextEditingController(
+                              text: item["pool_id"].toString()),
+                          enabled: false,
+                        ),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '池子类型',
+                          ),
+                          controller: TextEditingController(
+                              text: item["pool_type"].toString()),
+                          enabled: false,
+                        ),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: 'APPID',
+                          ),
+                          controller: TextEditingController(
+                              text: item["app_id"].toString()),
+                          onChanged: (value) {
+                            item["app_id"] = value;
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          '分享图片',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        ImagePicker(
+                            callback: (value) =>
+                                item["share_img"] = value.toString()),
+                        const SizedBox(height: 10),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '分享标题',
+                          ),
+                          controller: TextEditingController(
+                              text: item["share_title"].toString()),
+                          onChanged: (value) {
+                            item["share_title"] = value;
+                          },
+                        ),
+                      ],
+                    ))),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _postEditRequest(item);
+                },
+                child: const Text('确定'),
+              )
+            ],
+          );
+        });
+  }
+
   //分页函数
   void _loadData() {
     int startIndex = _currentPage * _pageSize;
@@ -317,6 +469,15 @@ class _PoolDisplayState extends State<PoolDisplay> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -359,6 +520,30 @@ class _PoolDisplayState extends State<PoolDisplay> {
         label: SizedBox(
           width: 60,
           child: Text("APPID"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 60,
+          child: Text("上新提醒"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 80,
+          child: Text("分享图片"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 80,
+          child: Text("分享标题"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 60,
+          child: Text("编辑"),
         ),
       ),
     ];
@@ -404,12 +589,19 @@ class _PoolDisplayState extends State<PoolDisplay> {
                             Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  const Image(
-                                    image: AssetImage('assets/wuxianshang.jpg'),
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  _gotPoolInfo
+                                      ? Image(
+                                          image: NetworkImage(
+                                              _poolInfo['image_url']
+                                                  .toString()),
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : const Placeholder(
+                                          fallbackHeight: 80,
+                                          fallbackWidth: 80,
+                                        ),
                                   const SizedBox(
                                     width: 20,
                                   ),
@@ -509,15 +701,54 @@ class _PoolDisplayState extends State<PoolDisplay> {
                                               fontSize: 12,
                                             )),
                                   )),
+                                  DataCell(SizedBox(
+                                      width: 60,
+                                      child: Switch(
+                                        value: _currentPageData[item]
+                                            ['show_new_label'],
+                                        onChanged: (value) {
+                                          _setNewLabel(
+                                              _currentPageData[item], value);
+                                        },
+                                      ))),
+                                  DataCell(SizedBox(
+                                    width: 80,
+                                    child: Image.network(
+                                        _currentPageData[item]['share_img']
+                                            .toString(),
+                                        width: 80,
+                                        height: 80,
+                                        fit: BoxFit.fill),
+                                  )),
+                                  DataCell(SizedBox(
+                                    width: 80,
+                                    child: Text(
+                                        _currentPageData[item]['share_title']
+                                            .toString(),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                        )),
+                                  )),
+                                  DataCell(SizedBox(
+                                    width: 60,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        _editItem(_currentPageData[item]);
+                                      },
+                                      child: const Text('编辑'),
+                                    ),
+                                  )),
                                 ]);
                               }),
                             ),
                             PaginationControl(
-                                currentPage: _currentPage,
-                                totalItems: _searchResult.length,
-                                pageSize: _pageSize,
-                                onNextPage: _nextPage,
-                                onPrevPage: _prevPage)
+                              currentPage: _currentPage,
+                              totalItems: _searchResult.length,
+                              pageSize: _pageSize,
+                              onNextPage: _nextPage,
+                              onPrevPage: _prevPage,
+                              onJumpPage: _jumpToPage,
+                            )
                           ],
                         )))));
   }

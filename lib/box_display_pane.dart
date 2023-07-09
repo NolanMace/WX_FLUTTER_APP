@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:mis/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
@@ -19,8 +20,10 @@ class _BoxDisplayState extends State<BoxDisplay> {
   final _getBoxUrl = AppConfig.getBoxUrl;
   final _deleteUrl = AppConfig.deleteDisplayBoxUrl;
   final _addUrl = AppConfig.addDisplayBoxUrl;
+  final _updateShowNewLabelUrl = AppConfig.updateBoxesDisplayShowNewLabel;
+  final _updateUrl = AppConfig.updateBoxesDisplayUrl;
   late List<dynamic> _displayItems;
-  var _boxInfo = {
+  final _boxInfo = {
     "box_id": 0,
     "box_type": "",
     "box_name": "",
@@ -41,15 +44,20 @@ class _BoxDisplayState extends State<BoxDisplay> {
   //判断是否正在加载数据
   bool _isLoading = true;
 
+  bool _gotBox = false;
+
   bool _isAllSelected = false;
 
   //输入框控制器
   final _searchController = TextEditingController();
 
   void fetchData() async {
+    setState(() {
+      _isLoading = true;
+    });
     if (widget.boxId == 0) {
       setState(() {
-        _isLoading = false;
+        _isLoading = true;
       });
       return;
     }
@@ -85,12 +93,14 @@ class _BoxDisplayState extends State<BoxDisplay> {
         return;
       }
       final data = response.data;
+      print(data);
       setState(() {
         _boxInfo["box_id"] = boxInfoResponse.data["box_id"];
         _boxInfo["box_type"] = boxInfoResponse.data["box_type"];
         _boxInfo["box_name"] = boxInfoResponse.data["box_name"];
         _boxInfo["image_url"] = boxInfoResponse.data["image_url"];
         _boxInfo["box_price"] = boxInfoResponse.data["box_price"];
+        _gotBox = true;
         _selectedItemIds.clear();
         _isAllSelected = false;
         _currentPage = 0;
@@ -103,7 +113,7 @@ class _BoxDisplayState extends State<BoxDisplay> {
         _isLoading = false;
       });
     } catch (e) {
-      print(e);
+      debugPrint(e.toString());
       // ignore: use_build_context_synchronously
       showDialog(
         context: context,
@@ -176,7 +186,7 @@ class _BoxDisplayState extends State<BoxDisplay> {
       });
       fetchData();
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       setState(() {
         _isLoading = true;
       });
@@ -258,6 +268,21 @@ class _BoxDisplayState extends State<BoxDisplay> {
                             newItem?['app_id'] = value;
                           },
                         ),
+                        const SizedBox(height: 10),
+                        const Text('分享图片'),
+                        ImagePicker(callback: (value) {
+                          newItem?['share_img'] = value;
+                        }),
+                        const SizedBox(height: 10),
+                        const Text('分享标题'),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '分享标题',
+                          ),
+                          onChanged: (value) {
+                            newItem?['share_title'] = value;
+                          },
+                        ),
                       ],
                     ))),
             actions: [
@@ -283,7 +308,7 @@ class _BoxDisplayState extends State<BoxDisplay> {
                     await _dio.post(_addUrl, options: options, data: newItem);
                     fetchData();
                   } catch (e) {
-                    print('Error: $e');
+                    debugPrint('Error: $e');
                     setState(() {
                       _isLoading = true;
                     });
@@ -295,6 +320,137 @@ class _BoxDisplayState extends State<BoxDisplay> {
             ],
           );
         });
+  }
+
+  void _postEditRequest(item) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      await _dio.post(_updateUrl, options: options, data: item);
+      fetchData();
+    } catch (e) {
+      debugPrint('Error: $e');
+      setState(() {
+        _isLoading = true;
+      });
+    }
+  }
+
+  void _editItem(item) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('编辑配置'),
+            content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 300),
+                child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '箱子ID',
+                          ),
+                          keyboardType: TextInputType.number,
+                          controller: TextEditingController(
+                              text: item["box_id"].toString()),
+                          enabled: false,
+                        ),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '箱子类型',
+                          ),
+                          controller: TextEditingController(
+                              text: item["box_type"].toString()),
+                          enabled: false,
+                        ),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: 'APPID',
+                          ),
+                          controller: TextEditingController(
+                              text: item["app_id"].toString()),
+                          onChanged: (value) {
+                            item["app_id"] = value;
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          '分享图片',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        ImagePicker(
+                            callback: (value) =>
+                                item["share_img"] = value.toString()),
+                        const SizedBox(height: 10),
+                        TextField(
+                          decoration: const InputDecoration(
+                            labelText: '分享标题',
+                          ),
+                          controller: TextEditingController(
+                              text: item["share_title"].toString()),
+                          onChanged: (value) {
+                            item["share_title"] = value;
+                          },
+                        ),
+                      ],
+                    ))),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _postEditRequest(item);
+                },
+                child: const Text('确定'),
+              )
+            ],
+          );
+        });
+  }
+
+  void _setNewLabel(item, bool value) async {
+    Map<String, dynamic>? newItem = {
+      "auto_id": item["auto_id"],
+      "box_id": item["box_id"],
+      "app_id": item["app_id"],
+      "box_type": item["box_type"],
+      "show_new_label": value,
+    };
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      await _dio.post(_updateShowNewLabelUrl, options: options, data: newItem);
+      fetchData();
+    } catch (e) {
+      debugPrint('Error: $e');
+      setState(() {
+        _isLoading = true;
+      });
+    }
   }
 
   //分页函数
@@ -317,6 +473,15 @@ class _BoxDisplayState extends State<BoxDisplay> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -353,6 +518,30 @@ class _BoxDisplayState extends State<BoxDisplay> {
         label: SizedBox(
           width: 60,
           child: Text("APPID"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 60,
+          child: Text("上新提醒"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 80,
+          child: Text("分享图片"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 80,
+          child: Text("分享标题"),
+        ),
+      ),
+      const DataColumn(
+        label: SizedBox(
+          width: 60,
+          child: Text("编辑"),
         ),
       ),
     ];
@@ -398,12 +587,18 @@ class _BoxDisplayState extends State<BoxDisplay> {
                             Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  const Image(
-                                    image: AssetImage('assets/wuxianshang.jpg'),
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                  ),
+                                  _gotBox
+                                      ? Image(
+                                          image: NetworkImage(
+                                              _boxInfo['image_url'].toString()),
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : const Placeholder(
+                                          fallbackHeight: 80,
+                                          fallbackWidth: 80,
+                                        ),
                                   const SizedBox(
                                     width: 20,
                                   ),
@@ -494,15 +689,54 @@ class _BoxDisplayState extends State<BoxDisplay> {
                                               fontSize: 12,
                                             )),
                                   )),
+                                  DataCell(SizedBox(
+                                      width: 60,
+                                      child: Switch(
+                                        value: _currentPageData[item]
+                                            ['show_new_label'],
+                                        onChanged: (value) {
+                                          _setNewLabel(
+                                              _currentPageData[item], value);
+                                        },
+                                      ))),
+                                  DataCell(SizedBox(
+                                    width: 80,
+                                    child: Image.network(
+                                        _currentPageData[item]['share_img']
+                                            .toString(),
+                                        width: 80,
+                                        height: 80,
+                                        fit: BoxFit.fill),
+                                  )),
+                                  DataCell(SizedBox(
+                                    width: 80,
+                                    child: Text(
+                                        _currentPageData[item]['share_title']
+                                            .toString(),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                        )),
+                                  )),
+                                  DataCell(SizedBox(
+                                    width: 60,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        _editItem(_currentPageData[item]);
+                                      },
+                                      child: const Text('编辑'),
+                                    ),
+                                  )),
                                 ]);
                               }),
                             ),
                             PaginationControl(
-                                currentPage: _currentPage,
-                                totalItems: _searchResult.length,
-                                pageSize: _pageSize,
-                                onNextPage: _nextPage,
-                                onPrevPage: _prevPage)
+                              currentPage: _currentPage,
+                              totalItems: _searchResult.length,
+                              pageSize: _pageSize,
+                              onNextPage: _nextPage,
+                              onPrevPage: _prevPage,
+                              onJumpPage: _jumpToPage,
+                            )
                           ],
                         )))));
   }

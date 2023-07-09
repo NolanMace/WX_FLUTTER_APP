@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mis/config.dart';
+import 'package:mis/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'custom_data_table.dart';
@@ -34,6 +35,7 @@ class _ProductDataState extends State<ProductData> {
     "商品名称",
     "商品图片",
     "是否现货",
+    "商品价格",
     "备注",
     "发售时间",
     '编辑',
@@ -46,6 +48,7 @@ class _ProductDataState extends State<ProductData> {
     'product_name',
     'product_image_url',
     'in_stock',
+    'product_price',
     'notes',
     'release_date',
     'edit',
@@ -126,6 +129,7 @@ class _ProductDataState extends State<ProductData> {
           "product_image_url": item["product_image_url"] ?? "",
           "in_stock": item["in_stock"] ?? "",
           "notes": item["notes"] ?? "",
+          "product_price": item["product_price"] ?? "",
           "release_date": item["release_date"] ?? "",
           "created_at": item["created_at"]
                   .replaceAll("T", " ")
@@ -150,7 +154,7 @@ class _ProductDataState extends State<ProductData> {
         _isLoading = false;
       });
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       setState(() {
         _isLoading = true;
       });
@@ -177,6 +181,15 @@ class _ProductDataState extends State<ProductData> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -210,6 +223,7 @@ class _ProductDataState extends State<ProductData> {
           'in_stock': null,
           'notes': null,
           'release_date': null,
+          'product_price': null,
         };
         return AlertDialog(
           title: const Text('添加箱子'),
@@ -237,14 +251,13 @@ class _ProductDataState extends State<ProductData> {
                           newBox?['product_name'] = value.toString();
                         },
                       ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '封面URL',
-                        ),
-                        onChanged: (value) {
-                          newBox?['product_image_url'] = value.toString();
-                        },
+                      const Text(
+                        "product_image_url",
+                        style: TextStyle(fontSize: 12, color: Colors.black),
                       ),
+                      ImagePicker(callback: (value) {
+                        newBox?['product_image_url'] = value.toString();
+                      }),
                       TextField(
                         decoration: const InputDecoration(
                           labelText: '是否现货',
@@ -267,6 +280,14 @@ class _ProductDataState extends State<ProductData> {
                         ),
                         onChanged: (value) {
                           newBox?['release_date'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '分解价格',
+                        ),
+                        onChanged: (value) {
+                          newBox?['product_price'] = double.tryParse(value);
                         },
                       ),
                     ],
@@ -296,7 +317,7 @@ class _ProductDataState extends State<ProductData> {
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
-                  print('Error: $error');
+                  debugPrint('Error: $error');
                 }
               },
               child: const Text('添加'),
@@ -402,6 +423,13 @@ class _ProductDataState extends State<ProductData> {
                           editedBox['product_name'] = value.toString();
                         },
                       ),
+                      const Text(
+                        "product_image_url",
+                        style: TextStyle(fontSize: 12, color: Colors.black),
+                      ),
+                      ImagePicker(callback: (value) {
+                        editedBox['product_image_url'] = value.toString();
+                      }),
                       TextField(
                         decoration: const InputDecoration(
                           labelText: '封面URL',
@@ -421,6 +449,16 @@ class _ProductDataState extends State<ProductData> {
                             text: productData['in_stock']),
                         onChanged: (value) {
                           editedBox['in_stock'] = value.toString();
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: '分解价格',
+                        ),
+                        controller: TextEditingController(
+                            text: productData['product_price']),
+                        onChanged: (value) {
+                          editedBox['product_price'] = double.tryParse(value);
                         },
                       ),
                       TextField(
@@ -580,11 +618,13 @@ class _ProductDataState extends State<ProductData> {
                                   imageColumnIndex: _imageColumnIndex,
                                   editData: _editBox))),
                       PaginationControl(
-                          currentPage: _currentPage,
-                          totalItems: _searchResult.length,
-                          pageSize: _pageSize,
-                          onNextPage: _nextPage,
-                          onPrevPage: _prevPage)
+                        currentPage: _currentPage,
+                        totalItems: _searchResult.length,
+                        pageSize: _pageSize,
+                        onNextPage: _nextPage,
+                        onPrevPage: _prevPage,
+                        onJumpPage: _jumpToPage,
+                      )
                     ],
                   ),
                 ),

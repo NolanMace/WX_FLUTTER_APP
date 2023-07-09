@@ -161,6 +161,15 @@ class _DqLotteryRecordPaneState extends State<DqLotteryRecordPane> {
     });
   }
 
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
+        _loadData();
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -621,7 +630,8 @@ class _DqLotteryRecordPaneState extends State<DqLotteryRecordPane> {
                                   totalItems: _searchResult.length,
                                   pageSize: _pageSize,
                                   onNextPage: _nextPage,
-                                  onPrevPage: _prevPage)
+                                  onPrevPage: _prevPage,
+                                  onJumpPage: _jumpToPage),
                             ])))));
   }
 }

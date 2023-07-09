@@ -1,3 +1,4 @@
 {
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "cmake.sourceDirectory": "C:/Users/kkssll/Desktop/project/WX_FLUTTER_APP/windows"
 }

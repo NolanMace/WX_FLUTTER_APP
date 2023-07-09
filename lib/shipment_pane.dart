@@ -17,6 +17,7 @@ class _ShipmentPaneState extends State<ShipmentPane> {
   final _getAdminShipmentOrderResponses =
       AppConfig.getAdminShipmentOrderResponses;
   final _toShipUrl = AppConfig.toShipUrl;
+  final _waitingShipUrl = AppConfig.waitingShipUrl;
   late List<dynamic> _shipmentOrders;
 
   //表格相关参数
@@ -39,7 +40,7 @@ class _ShipmentPaneState extends State<ShipmentPane> {
   final _searchController = TextEditingController();
   final _appIdController = TextEditingController();
 
-  String _dropdownValue = "shipment_order_id"; //下拉选择默认值
+  String _dropdownValue = "shipment_status"; //下拉选择默认值
 
   List<Map<String, dynamic>> _multiplyProduct(
       List<dynamic> productsData, String type) {
@@ -108,7 +109,6 @@ class _ShipmentPaneState extends State<ShipmentPane> {
         });
         return;
       }
-      print(response.data);
       List<dynamic> rawData = response.data;
       List<dynamic> _rawShipmentOrders = [];
       for (var shipment in rawData) {
@@ -140,7 +140,6 @@ class _ShipmentPaneState extends State<ShipmentPane> {
         }
         _rawShipmentOrders.add(newShipment);
       }
-      print(_rawShipmentOrders);
 
       setState(() {
         _selectedItemIds.clear();
@@ -213,6 +212,60 @@ class _ShipmentPaneState extends State<ShipmentPane> {
   }
 
   void _deleteItems() {}
+
+  void _waitToShipItemsRequest() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      //获取名为“token”的值，如果该键不存在，则返回默认值null
+      final token = prefs.getString('token');
+      // 处理获取的值
+      final options = Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      await _dio.post(_waitingShipUrl, options: options, data: {
+        "json_int_arrays": _selectedItemIds,
+      });
+      fetchData();
+    } catch (error) {
+      debugPrint('Error: $error');
+      setState(() {
+        _isLoading = true;
+      });
+    }
+  }
+
+  void _waitToShipItems() {
+    if (_selectedItemIds.isEmpty) {
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('提示'),
+          content: const Text('确定删除所选弹窗吗？'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _waitToShipItemsRequest();
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void _toShip(item) async {
     Map<String, dynamic> toShipRequest = {
@@ -483,6 +536,15 @@ class _ShipmentPaneState extends State<ShipmentPane> {
     });
   }
 
+  void _jumpToPage(int page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize < _searchResult.length) {
+        _currentPage = page - 1;
+        _loadData();
+      }
+    });
+  }
+
   //初始化
   @override
   void initState() {
@@ -654,6 +716,7 @@ class _ShipmentPaneState extends State<ShipmentPane> {
                                 '发货订单ID',
                                 '用户ID',
                                 '用户昵称',
+                                '发货状态',
                               ].map<DropdownMenuItem<String>>((String value) {
                                 late String key;
                                 switch (value) {
@@ -665,6 +728,9 @@ class _ShipmentPaneState extends State<ShipmentPane> {
                                     break;
                                   case '用户昵称':
                                     key = 'user_nickname';
+                                    break;
+                                  case '发货状态':
+                                    key = 'shipment_status';
                                     break;
                                 }
                                 return DropdownMenuItem<String>(
@@ -687,6 +753,14 @@ class _ShipmentPaneState extends State<ShipmentPane> {
                               child: ElevatedButton(
                                 onPressed: _deleteItems,
                                 child: const Text('删除'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 80,
+                              child: ElevatedButton(
+                                onPressed: _waitToShipItems,
+                                child: const Text('待发货'),
                               ),
                             ),
                           ],
@@ -744,10 +818,10 @@ class _ShipmentPaneState extends State<ShipmentPane> {
                                         ),
                                       ),
                                     ),
-                                    const DataCell(
+                                    DataCell(
                                       Image(
-                                        image: AssetImage(
-                                            'assets/wuxianshang.jpg'),
+                                        image: NetworkImage(
+                                            item['avatar_url'].toString()),
                                         width: 50,
                                         height: 50,
                                         fit: BoxFit.cover,
@@ -942,7 +1016,8 @@ class _ShipmentPaneState extends State<ShipmentPane> {
                             totalItems: _searchResult.length,
                             pageSize: _pageSize,
                             onNextPage: _nextPage,
-                            onPrevPage: _prevPage)
+                            onPrevPage: _prevPage,
+                            onJumpPage: _jumpToPage)
                       ],
                     ),
                   )),
@@ -967,22 +1042,17 @@ class ShipmentShowedProducts extends StatelessWidget {
         var product = products[index2];
         return ConstrainedBox(
           constraints: const BoxConstraints(
-            maxWidth: 60,
+            maxWidth: 70,
           ),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Image.asset('assets/wuxianshang.jpg',
+            Image.network(products[index2]["product_image"].toString(),
                 width: 50, height: 50, fit: BoxFit.cover),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  product["product_level"] + '赏' + product["product_name"],
-                  style: const TextStyle(fontSize: 12.0),
-                  maxLines: 2, // 最多显示两行
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            Text(
+              product["product_level"] + '赏' + product["product_name"],
+              style: const TextStyle(fontSize: 12.0),
+              maxLines: 2, // 最多显示两行
+              overflow: TextOverflow.ellipsis,
             ),
             Text(
               product["product_count"].toString(),

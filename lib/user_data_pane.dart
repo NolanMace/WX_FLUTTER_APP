@@ -8,12 +8,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'pagination_control.dart';
 
 class UserDataPane extends StatefulWidget {
-  UserDataPane({
+  const UserDataPane({
     Key? key,
   }) : super(key: key);
 
   @override
-  _UserDataPaneState createState() => _UserDataPaneState();
+  State<UserDataPane> createState() => _UserDataPaneState();
 }
 
 class _UserDataPaneState extends State<UserDataPane> {
@@ -50,7 +50,7 @@ class _UserDataPaneState extends State<UserDataPane> {
   final List<String> _attributes = [
     "select",
     "user_id",
-    "avatarUrl",
+    "avatar_url",
     "nickname",
     "app_id",
     "phone",
@@ -86,11 +86,11 @@ class _UserDataPaneState extends State<UserDataPane> {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onResponse: (Response response, ResponseInterceptorHandler handler) {
-          print("原始响应数据: ${response.data}");
+          debugPrint("原始响应数据: ${response.data}");
           return handler.next(response); // 继续处理响应数据
         },
         onError: (DioError e, ErrorInterceptorHandler handler) {
-          print("错误信息: ${e.message}");
+          debugPrint("错误信息: ${e.message}");
           return handler.next(e); // 继续处理错误信息
         },
       ),
@@ -121,7 +121,7 @@ class _UserDataPaneState extends State<UserDataPane> {
           "app_id": item["app_id"] ?? "",
           "unionid": item["unionid"] ?? "",
           "openid": item["openid"] ?? "",
-          "avatarUrl": item["avatar_url"] ?? "assets/touxiang.jpg",
+          "avatar_url": item["avatar_url"] ?? "assets/touxiang.jpg",
           "nickname": item["nickname"] ?? "",
           "phone": item["phone"] ?? "",
           "created_at": item["created_at"]
@@ -146,7 +146,7 @@ class _UserDataPaneState extends State<UserDataPane> {
         _isLoading = false;
       });
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       setState(() {
         _isLoading = true;
       });
@@ -189,6 +189,15 @@ class _UserDataPaneState extends State<UserDataPane> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -332,7 +341,7 @@ class _UserDataPaneState extends State<UserDataPane> {
                       'Content-Type': 'application/json',
                     },
                   );
-                  final response = await _dio.post(_editUserUrl,
+                  await _dio.post(_editUserUrl,
                       data: editedUser, options: options);
                   Navigator.of(context).pop();
                   fetchData();
@@ -436,7 +445,8 @@ class _UserDataPaneState extends State<UserDataPane> {
                           totalItems: _searchResult.length,
                           pageSize: _pageSize,
                           onNextPage: _nextPage,
-                          onPrevPage: _prevPage)
+                          onPrevPage: _prevPage,
+                          onJumpPage: _jumpToPage)
                     ])))
           ]);
   }

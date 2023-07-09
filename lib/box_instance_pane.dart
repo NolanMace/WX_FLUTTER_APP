@@ -21,8 +21,19 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
   final String _getBoxInstanceByBoxId = AppConfig.getBoxInstanceByBoxId;
   final String _deleteBoxInstanceByIds = AppConfig.deleteBoxInstanceByIds;
   final String _updateBoxInstance = AppConfig.updateBoxInstance;
+  final _getBoxUrl = AppConfig.getBoxUrl;
   late List<Map<String, dynamic>> _productInstanceData;
   late List<Map<String, dynamic>> _appIdResult;
+
+  final _boxInfo = {
+    "box_id": 0,
+    "box_type": "",
+    "box_name": "",
+    "image_url": "",
+    "box_price": 0,
+  };
+
+  bool _gotBox = false;
 
   //表格参数
   final List<String> _columns = [
@@ -33,7 +44,6 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
     'box_number',
     'left_num',
     'total_num',
-    'img_url',
     'edit',
     'created_at',
     'updated_at',
@@ -46,7 +56,6 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
     '箱子编号',
     '剩余数量',
     '总数量',
-    '图片',
     '编辑',
     '创建时间',
     '更新时间',
@@ -54,7 +63,7 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
   List<DataColumn> _columnNames = [];
   List<int> _selectedItemIds = [];
   List<dynamic> _currentPageData = [];
-  final int _imageColumnIndex = 7;
+  final int _imageColumnIndex = 10000;
   final bool _hasDetailButton = false;
 
   //分页参数
@@ -84,6 +93,13 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+      );
+      final boxInfoResponse = await _dio.get(
+        queryParameters: {
+          'box_id': widget.id,
+        },
+        _getBoxUrl,
+        options: options,
       );
       Map<String, dynamic> queryParams = {
         'box_id': widget.id,
@@ -123,6 +139,12 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
       }).toList();
 
       setState(() {
+        _boxInfo["box_id"] = boxInfoResponse.data["box_id"];
+        _boxInfo["box_type"] = boxInfoResponse.data["box_type"];
+        _boxInfo["box_name"] = boxInfoResponse.data["box_name"];
+        _boxInfo["image_url"] = boxInfoResponse.data["image_url"];
+        _boxInfo["box_price"] = boxInfoResponse.data["box_price"];
+        _gotBox = true;
         _selectedItemIds.clear();
         _currentPage = 0;
         _productInstanceData = productInstanceData;
@@ -161,6 +183,15 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -462,12 +493,18 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Image(
-                              image: AssetImage('assets/wuxianshang.jpg'),
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                            ),
+                            _gotBox
+                                ? Image(
+                                    image: NetworkImage(
+                                        _boxInfo['image_url'].toString()),
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Placeholder(
+                                    fallbackHeight: 80,
+                                    fallbackWidth: 80,
+                                  ),
                             Column(
                               children: [
                                 Text('ID: ${widget.id}'),
@@ -561,11 +598,13 @@ class _BoxInstancePaneState extends State<BoxInstancePane> {
                               selectAll: _selectAll,
                             ),
                             PaginationControl(
-                                currentPage: _currentPage,
-                                totalItems: _searchResult.length,
-                                pageSize: _pageSize,
-                                onNextPage: _nextPage,
-                                onPrevPage: _prevPage)
+                              currentPage: _currentPage,
+                              totalItems: _searchResult.length,
+                              pageSize: _pageSize,
+                              onNextPage: _nextPage,
+                              onPrevPage: _prevPage,
+                              onJumpPage: _jumpToPage,
+                            )
                           ],
                         )
                       ],

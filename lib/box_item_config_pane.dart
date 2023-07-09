@@ -27,7 +27,16 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   final String _deleteConfigUrl = AppConfig.deleteConfigUrl;
   final String _updateConfigUrl = AppConfig.updateConfigUrl;
   final String _generateBoxItemsUrl = AppConfig.generateBoxItemsUrl;
+  final _getBoxUrl = AppConfig.getBoxUrl;
   late List<Map<String, dynamic>> _boxItemConfigData;
+
+  final _boxInfo = {
+    "box_id": 0,
+    "box_type": "",
+    "box_name": "",
+    "image_url": "",
+    "box_price": 0,
+  };
 
   //表格参数
   final List<String> _columns = [
@@ -36,7 +45,6 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     'box_template_config_id',
     'box_id',
     'product_id',
-    'img_url',
     'quantity',
     'drawn_num',
     'send_num',
@@ -51,7 +59,6 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     '箱子配置ID',
     '箱子ID',
     '商品ID',
-    '图片',
     '数量',
     'drawn_num',
     'send_num',
@@ -63,7 +70,7 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   List<DataColumn> _columnNames = [];
   List<int> _selectedItemIds = [];
   List<dynamic> _currentPageData = [];
-  final int _imageColumnIndex = 5;
+  final int _imageColumnIndex = 10000;
   final bool _hasDetailButton = false;
 
   //分页参数
@@ -78,6 +85,8 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
   final _searchController = TextEditingController();
 
   bool _isLoading = true;
+
+  bool _gotBox = false;
 
   //请求数据
   Future<void> fetchData() async {
@@ -97,6 +106,13 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+      );
+      final boxInfoResponse = await _dio.get(
+        queryParameters: {
+          'box_id': widget.id,
+        },
+        _getBoxUrl,
+        options: options,
       );
       Map<String, dynamic> queryParams = {
         'box_id': widget.id,
@@ -136,6 +152,12 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
       }).toList();
 
       setState(() {
+        _boxInfo["box_id"] = boxInfoResponse.data["box_id"];
+        _boxInfo["box_type"] = boxInfoResponse.data["box_type"];
+        _boxInfo["box_name"] = boxInfoResponse.data["box_name"];
+        _boxInfo["image_url"] = boxInfoResponse.data["image_url"];
+        _boxInfo["box_price"] = boxInfoResponse.data["box_price"];
+        _gotBox = true;
         _selectedItemIds.clear();
         _searchResult = _boxItemConfigData;
         _currentPageData = _searchResult
@@ -172,6 +194,15 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -664,12 +695,18 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Image(
-                              image: AssetImage('assets/wuxianshang.jpg'),
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                            ),
+                            _gotBox
+                                ? Image(
+                                    image: NetworkImage(
+                                        _boxInfo['image_url'].toString()),
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Placeholder(
+                                    fallbackHeight: 80,
+                                    fallbackWidth: 80,
+                                  ),
                             Column(
                               children: [
                                 Text('ID: ${widget.id}'),
@@ -792,11 +829,13 @@ class _BoxItemConfigPaneState extends State<BoxItemConfigPane> {
                                 imageColumnIndex: _imageColumnIndex,
                                 editData: _editData),
                             PaginationControl(
-                                currentPage: _currentPage,
-                                totalItems: _searchResult.length,
-                                pageSize: _pageSize,
-                                onNextPage: _nextPage,
-                                onPrevPage: _prevPage)
+                              currentPage: _currentPage,
+                              totalItems: _searchResult.length,
+                              pageSize: _pageSize,
+                              onNextPage: _nextPage,
+                              onPrevPage: _prevPage,
+                              onJumpPage: _jumpToPage,
+                            )
                           ],
                         )
                       ],

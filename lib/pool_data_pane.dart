@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mis/config.dart';
+import 'package:mis/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pagination_control.dart';
 
@@ -158,7 +159,7 @@ class _PoolDataPaneState extends State<PoolDataPane> {
         },
       );
       Response response = await _dio.get(_getAllPoolsUrl, options: options);
-      print(response.data);
+      debugPrint(response.data.toString());
       if (response.data == null) {
         setState(() {
           _isLoading = false;
@@ -178,7 +179,7 @@ class _PoolDataPaneState extends State<PoolDataPane> {
         _isLoading = false;
       });
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       setState(() {
         _isLoading = true;
       });
@@ -205,6 +206,15 @@ class _PoolDataPaneState extends State<PoolDataPane> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -300,14 +310,13 @@ class _PoolDataPaneState extends State<PoolDataPane> {
                           newpool?['pool_type'] = value.toString();
                         },
                       ),
-                      TextField(
-                        decoration: const InputDecoration(
-                          labelText: '封面URL',
-                        ),
-                        onChanged: (value) {
-                          newpool?['image_url'] = value.toString();
-                        },
+                      const Text(
+                        "image_url",
+                        style: TextStyle(fontSize: 12, color: Colors.black),
                       ),
+                      ImagePicker(
+                          callback: (file) =>
+                              newpool?['image_url'] = file.toString()),
                       TextField(
                         decoration: const InputDecoration(
                           labelText: '备注',
@@ -352,7 +361,7 @@ class _PoolDataPaneState extends State<PoolDataPane> {
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
-                  print('Error: $error');
+                  debugPrint('Error: $error');
                 }
               },
               child: const Text('添加'),
@@ -380,7 +389,7 @@ class _PoolDataPaneState extends State<PoolDataPane> {
       });
       fetchData();
     } catch (error) {
-      print('Error: $error');
+      debugPrint('Error: $error');
       setState(() {
         _isLoading = true;
       });
@@ -479,16 +488,13 @@ class _PoolDataPaneState extends State<PoolDataPane> {
                       editedpool['pool_type'] = value.toString();
                     },
                   ),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: '封面URL',
-                    ),
-                    controller:
-                        TextEditingController(text: poolData['image_url']),
-                    onChanged: (value) {
-                      editedpool['image_url'] = value.toString();
-                    },
+                  const Text(
+                    "image_url",
+                    style: TextStyle(fontSize: 12, color: Colors.black),
                   ),
+                  ImagePicker(
+                      callback: (file) =>
+                          editedpool['image_url'] = file.toString()),
                   TextField(
                     decoration: const InputDecoration(
                       labelText: '备注',
@@ -539,7 +545,7 @@ class _PoolDataPaneState extends State<PoolDataPane> {
                   Navigator.of(context).pop();
                   fetchData();
                 } catch (error) {
-                  print('Error: $error');
+                  debugPrint('Error: $error');
                 }
               },
               child: const Text('保存'),
@@ -639,6 +645,7 @@ class _PoolDataPaneState extends State<PoolDataPane> {
                             child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: DataTable(
+                                  columnSpacing: 5,
                                   columns: _columns,
                                   rows: List<DataRow>.generate(
                                       _currentPageData.length, (index) {
@@ -702,13 +709,13 @@ class _PoolDataPaneState extends State<PoolDataPane> {
                                           ),
                                         ),
                                       ),
-                                      const DataCell(
+                                      DataCell(
                                         SizedBox(
                                           width: 50,
                                           height: 50,
                                           child: Image(
-                                            image: AssetImage(
-                                                'assets/wuxianshang.jpg'),
+                                            image: NetworkImage(
+                                                item["image_url"].toString()),
                                             fit: BoxFit.cover,
                                           ),
                                         ),
@@ -796,11 +803,13 @@ class _PoolDataPaneState extends State<PoolDataPane> {
                                   }),
                                 ))),
                         PaginationControl(
-                            currentPage: _currentPage,
-                            totalItems: _searchResult.length,
-                            pageSize: _pageSize,
-                            onNextPage: _nextPage,
-                            onPrevPage: _prevPage)
+                          currentPage: _currentPage,
+                          totalItems: _searchResult.length,
+                          pageSize: _pageSize,
+                          onNextPage: _nextPage,
+                          onPrevPage: _prevPage,
+                          onJumpPage: _jumpToPage,
+                        )
                       ],
                     )),
               ),

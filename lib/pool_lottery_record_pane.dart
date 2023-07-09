@@ -159,6 +159,15 @@ class _PoolLotteryRecordPaneState extends State<PoolLotteryRecordPane> {
     });
   }
 
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
+        _loadData();
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -594,11 +603,13 @@ class _PoolLotteryRecordPaneState extends State<PoolLotteryRecordPane> {
                                     ]);
                                   })),
                               PaginationControl(
-                                  currentPage: _currentPage,
-                                  totalItems: _searchResult.length,
-                                  pageSize: _pageSize,
-                                  onNextPage: _nextPage,
-                                  onPrevPage: _prevPage)
+                                currentPage: _currentPage,
+                                totalItems: _searchResult.length,
+                                pageSize: _pageSize,
+                                onNextPage: _nextPage,
+                                onPrevPage: _prevPage,
+                                onJumpPage: _jumpToPage,
+                              )
                             ])))));
   }
 }

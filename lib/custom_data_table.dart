@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class CustomDataTable extends StatefulWidget {
@@ -35,6 +34,7 @@ class _CustomDataTableState extends State<CustomDataTable> {
   @override
   Widget build(BuildContext context) {
     return DataTable(
+      columnSpacing: 1,
       columns: widget.columnNames,
       rows: List<DataRow>.generate(
         widget.currentPageData.length,
@@ -79,7 +79,7 @@ class _CustomDataTableState extends State<CustomDataTable> {
                             .elementAt(0)
                             .toString());
                       },
-                      child: Text('配置详情'),
+                      child: const Text('配置详情'),
                     ),
                   );
                 } else {
@@ -98,11 +98,13 @@ class _CustomDataTableState extends State<CustomDataTable> {
                   );
                 }
               } else {
-                return const DataCell(
+                String key = widget.columns[columnIndex];
+                return DataCell(
                   Image(
-                    image: AssetImage('assets/wuxianshang.jpg'),
-                    width: 50,
-                    height: 50,
+                    image: NetworkImage(
+                        widget.currentPageData[index][key].toString()),
+                    width: 40,
+                    height: 40,
                     fit: BoxFit.cover,
                   ),
                 );

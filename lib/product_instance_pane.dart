@@ -21,8 +21,19 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
   final String _getBoxItemsByBoxId = AppConfig.getBoxItemsByBoxIdUrl;
   final String _deleteBoxItemsUrl = AppConfig.deleteBoxItemsUrl;
   final String _updateBoxItemUrl = AppConfig.updateBoxItemUrl;
+  final _getBoxUrl = AppConfig.getBoxUrl;
   late List<Map<String, dynamic>> _productInstanceData;
   late List<Map<String, dynamic>> _appIdResult;
+
+  final _boxInfo = {
+    "box_id": 0,
+    "box_type": "",
+    "box_name": "",
+    "image_url": "",
+    "box_price": 0,
+  };
+
+  bool _gotBox = false;
 
   //表格参数
   final List<String> _columns = [
@@ -33,7 +44,6 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
     'product_id',
     'box_number',
     'product_level',
-    'img_url',
     'is_drawn',
     'drawn_num',
     'send_num',
@@ -50,7 +60,6 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
     '商品ID',
     '箱子编号',
     '商品等级',
-    '图片',
     '是否已抽取',
     'Drawn Num',
     'Send Num',
@@ -62,11 +71,11 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
   List<DataColumn> _columnNames = [];
   List<int> _selectedItemIds = [];
   List<dynamic> _currentPageData = [];
-  final int _imageColumnIndex = 7;
+  final int _imageColumnIndex = 10000;
   final bool _hasDetailButton = false;
 
   //分页参数
-  late int _pageSize = 10;
+  final int _pageSize = 10;
   late int _currentPage = 0;
   late List<Map<String, dynamic>> _searchResult = [];
 
@@ -92,6 +101,13 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+      );
+      final boxInfoResponse = await _dio.get(
+        queryParameters: {
+          'box_id': widget.id,
+        },
+        _getBoxUrl,
+        options: options,
       );
       Map<String, dynamic> queryParams = {
         'box_id': widget.id,
@@ -135,6 +151,12 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
       }).toList();
 
       setState(() {
+        _boxInfo["box_id"] = boxInfoResponse.data["box_id"];
+        _boxInfo["box_type"] = boxInfoResponse.data["box_type"];
+        _boxInfo["box_name"] = boxInfoResponse.data["box_name"];
+        _boxInfo["image_url"] = boxInfoResponse.data["image_url"];
+        _boxInfo["box_price"] = boxInfoResponse.data["box_price"];
+        _gotBox = true;
         _selectedItemIds.clear();
         _productInstanceData = productInstanceData;
         _searchResult = _productInstanceData;
@@ -172,6 +194,15 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
     setState(() {
       if ((_currentPage + 1) * _pageSize < _searchResult.length) {
         _currentPage++;
+        _loadData();
+      }
+    });
+  }
+
+  void _jumpToPage(page) {
+    setState(() {
+      if (page >= 1 && (page - 1) * _pageSize <= _searchResult.length) {
+        _currentPage = page - 1;
         _loadData();
       }
     });
@@ -517,12 +548,18 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Image(
-                              image: AssetImage('assets/wuxianshang.jpg'),
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                            ),
+                            _gotBox
+                                ? Image(
+                                    image: NetworkImage(
+                                        _boxInfo['image_url'].toString()),
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Placeholder(
+                                    fallbackHeight: 80,
+                                    fallbackWidth: 80,
+                                  ),
                             Column(
                               children: [
                                 Text('ID: ${widget.id}'),
@@ -624,11 +661,13 @@ class _ProductInstancePaneState extends State<ProductInstancePane> {
                               selectAll: _selectAll,
                             ),
                             PaginationControl(
-                                currentPage: _currentPage,
-                                totalItems: _searchResult.length,
-                                pageSize: _pageSize,
-                                onNextPage: _nextPage,
-                                onPrevPage: _prevPage)
+                              currentPage: _currentPage,
+                              totalItems: _searchResult.length,
+                              pageSize: _pageSize,
+                              onNextPage: _nextPage,
+                              onPrevPage: _prevPage,
+                              onJumpPage: _jumpToPage,
+                            )
                           ],
                         )
                       ],
